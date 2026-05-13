@@ -109,6 +109,39 @@ struct PortfolioGeneratorTests {
         #expect(prompt.contains("BusinessMath"))
     }
 
+    @Test("Portfolio prompt includes project description when present")
+    func portfolioIncludesProjectDescription() throws {
+        let cardWithDesc = ProjectCard(
+            projectName: "DescProject",
+            projectPath: "/Users/test/DescProject",
+            gatheredAt: Date(timeIntervalSince1970: 1_700_000_000),
+            git: GitFacts(
+                commitCount: 50,
+                releaseHistory: [],
+                branchCount: 1,
+                firstCommitDate: nil,
+                latestCommitDate: nil,
+                contributorCount: 1
+            ),
+            packageManifest: nil,
+            tests: nil,
+            quality: nil,
+            insights: nil,
+            designArtifacts: DesignArtifactFacts(
+                designProposalCount: 0,
+                architectureNotes: [],
+                hasDesignFirstWorkflow: false,
+                hasClaudeMD: false,
+                projectDescription: "Mission: An inventory management tool."
+            )
+        )
+
+        let builder = PortfolioPromptBuilder()
+        let prompt = try builder.buildUserPrompt(from: [cardWithDesc])
+
+        #expect(prompt.contains("inventory management"))
+    }
+
     @Test("Includes design artifact summary when present")
     func includesDesignArtifacts() throws {
         let builder = PortfolioPromptBuilder()

@@ -13,16 +13,19 @@ public struct DesignArtifactFacts: Codable, Sendable {
     public let architectureNotes: [String]
     public let hasDesignFirstWorkflow: Bool
     public let hasClaudeMD: Bool
+    public let projectDescription: String?
 
     public init(
         designProposalCount: Int,
         architectureNotes: [String],
         hasDesignFirstWorkflow: Bool,
-        hasClaudeMD: Bool
+        hasClaudeMD: Bool,
+        projectDescription: String? = nil
     ) {
         self.designProposalCount = designProposalCount
         self.architectureNotes = architectureNotes
         self.hasDesignFirstWorkflow = hasDesignFirstWorkflow
         self.hasClaudeMD = hasClaudeMD
+        self.projectDescription = projectDescription
     }
 }

@@ -72,6 +72,7 @@ public struct PromptBuilder: Sendable {
         - Highlight judgment and craft, not just output
         - If design proposals or a design-first workflow exist, emphasize this as evidence of architectural thinking
         - If Claude Code insights data exists, weave it naturally — mention session patterns that demonstrate working style
+        - If a "Project Description" section is present, treat it as the authoritative source for what the project does, who it serves, and how it differentiates — the narrative must be consistent with this description
         - Never fabricate data not present in the input
         - Output pure markdown, no code fences around the entire response
         """
@@ -142,6 +143,13 @@ public struct PromptBuilder: Sendable {
                 qualSection += "- Categories: \(cats)\n"
             }
             sections.append(qualSection)
+        }
+
+        // Project description (from MASTER_PLAN.md)
+        if let description = card.designArtifacts?.projectDescription {
+            var descSection = "## Project Description (from project's own MASTER_PLAN.md)\n"
+            descSection += description + "\n"
+            sections.append(descSection)
         }
 
         // Design artifacts

@@ -63,11 +63,14 @@ public struct DesignDocExtractor: Sendable {
             architectureNotes = extractHeadings(from: content)
         }
 
+        let projectDescription = extractProjectDescription(from: projectPath)
+
         return DesignArtifactFacts(
             designProposalCount: proposalCount,
             architectureNotes: architectureNotes,
             hasDesignFirstWorkflow: hasDesignFirst,
-            hasClaudeMD: hasClaudeMD
+            hasClaudeMD: hasClaudeMD,
+            projectDescription: projectDescription
         )
     }
 
@@ -79,5 +82,58 @@ public struct DesignDocExtractor: Sendable {
                 guard trimmed.hasPrefix("## ") else { return nil }
                 return String(trimmed.dropFirst(3))
             }
+    }
+
+    private func extractProjectDescription(from projectPath: URL) -> String? {
+        let masterPlanPath = projectPath
+            .appendingPathComponent("development-guidelines")
+            .appendingPathComponent("00_CORE_RULES")
+            .appendingPathComponent("00_MASTER_PLAN.md")
+
+        guard FileManager.default.fileExists(atPath: masterPlanPath.path),
+              let content = try? String(contentsOf: masterPlanPath, encoding: .utf8) else {
+            return nil
+        }
+
+        if content.contains("[PROJECT_NAME]") || content.contains("[Describe the core mission") {
+            return nil
+        }
+
+        var parts: [String] = []
+        if let mission = extractSection(named: "Mission", from: content) {
+            parts.append("Mission: \(mission)")
+        }
+        if let users = extractSection(named: "Target Users", from: content) {
+            parts.append("Target Users: \(users)")
+        }
+        if let differentiators = extractSection(named: "Key Differentiators", from: content) {
+            parts.append("Key Differentiators: \(differentiators)")
+        }
+
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: "\n\n")
+    }
+
+    private func extractSection(named heading: String, from markdown: String) -> String? {
+        let lines = markdown.split(separator: "\n", omittingEmptySubsequences: false)
+        var capturing = false
+        var captured: [String] = []
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed == "### \(heading)" {
+                capturing = true
+                continue
+            }
+            if capturing {
+                if trimmed.hasPrefix("### ") || trimmed.hasPrefix("## ") || trimmed.hasPrefix("# ") || trimmed == "---" {
+                    break
+                }
+                captured.append(String(line))
+            }
+        }
+
+        let result = captured.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return result.isEmpty ? nil : result
     }
 }

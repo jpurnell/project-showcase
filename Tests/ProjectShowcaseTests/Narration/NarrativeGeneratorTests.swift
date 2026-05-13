@@ -142,6 +142,58 @@ struct NarrativeGeneratorTests {
         #expect(hash1 != hash2)
     }
 
+    @Test("User prompt includes project description when present")
+    func userPromptIncludesProjectDescription() throws {
+        let card = ProjectCard(
+            projectName: "iConquer",
+            projectPath: "/Users/test/iConquer",
+            gatheredAt: Date(timeIntervalSince1970: 1_700_000_000),
+            git: GitFacts(
+                commitCount: 50,
+                releaseHistory: [],
+                branchCount: 1,
+                firstCommitDate: nil,
+                latestCommitDate: nil,
+                contributorCount: 1
+            ),
+            packageManifest: nil,
+            tests: nil,
+            quality: nil,
+            insights: nil,
+            designArtifacts: DesignArtifactFacts(
+                designProposalCount: 0,
+                architectureNotes: [],
+                hasDesignFirstWorkflow: false,
+                hasClaudeMD: false,
+                projectDescription: "Mission: A modern Swift port of iConquer, a Risk-style strategy game."
+            )
+        )
+
+        let builder = PromptBuilder()
+        let prompt = try builder.buildUserPrompt(from: card)
+
+        #expect(prompt.contains("Project Description"))
+        #expect(prompt.contains("Risk-style strategy game"))
+        #expect(prompt.contains("MASTER_PLAN"))
+    }
+
+    @Test("User prompt omits project description when nil")
+    func userPromptOmitsNilProjectDescription() throws {
+        let builder = PromptBuilder()
+        let prompt = try builder.buildUserPrompt(from: Self.sampleCard)
+
+        #expect(!prompt.contains("Project Description"))
+    }
+
+    @Test("System prompt instructs to respect project description")
+    func systemPromptRespectsProjectDescription() throws {
+        let builder = PromptBuilder()
+        let prompt = try builder.buildSystemPrompt(audience: .hiringManager, style: .caseStudy)
+
+        #expect(prompt.contains("Project Description"))
+        #expect(prompt.contains("authoritative"))
+    }
+
     @Test("Parses narrative response from Claude API format")
     func parsesResponse() throws {
         let rawResponse = """

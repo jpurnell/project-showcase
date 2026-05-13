@@ -12,7 +12,8 @@ import Foundation
 private func createProjectFixture(
     claudeMD: String? = nil,
     proposalCount: Int = 0,
-    hasDevGuidelines: Bool = false
+    hasDevGuidelines: Bool = false,
+    masterPlanContent: String? = nil
 ) throws -> URL {
     let dir = FileManager.default.temporaryDirectory
         .appendingPathComponent("showcase-docs-\(UUID().uuidString)")
@@ -53,6 +54,17 @@ private func createProjectFixture(
         try FileManager.default.createDirectory(at: coreRules, withIntermediateDirectories: true)
         try workflowContent.write(
             to: coreRules.appendingPathComponent("07_SESSION_WORKFLOW.md"),
+            atomically: true, encoding: .utf8
+        )
+    }
+
+    if let masterPlan = masterPlanContent {
+        let coreRulesDir = dir
+            .appendingPathComponent("development-guidelines")
+            .appendingPathComponent("00_CORE_RULES")
+        try FileManager.default.createDirectory(at: coreRulesDir, withIntermediateDirectories: true)
+        try masterPlan.write(
+            to: coreRulesDir.appendingPathComponent("00_MASTER_PLAN.md"),
             atomically: true, encoding: .utf8
         )
     }
@@ -115,6 +127,89 @@ struct DesignDocExtractorTests {
         let facts = try await extractor.extract(from: dir)
 
         #expect(!facts.hasDesignFirstWorkflow)
+    }
+
+    @Test("Extracts project description from filled MASTER_PLAN.md")
+    func extractsProjectDescription() async throws {
+        let masterPlan = """
+        # MyProject Master Plan
+
+        ## Project Overview
+
+        ### Mission
+        A Swift library that solves complex math problems with precision.
+
+        ### Target Users
+        - Developers building financial applications
+        - Data scientists needing Swift-native numerics
+
+        ### Key Differentiators
+        - Battle-tested with 5000+ tests
+        - Pure Swift, no C dependencies
+
+        ---
+
+        ## Architecture
+        """
+        let dir = try createProjectFixture(masterPlanContent: masterPlan)
+        let extractor = DesignDocExtractor()
+        let facts = try await extractor.extract(from: dir)
+
+        #expect(facts.projectDescription != nil)
+        #expect(facts.projectDescription!.contains("complex math problems"))
+        #expect(facts.projectDescription!.contains("financial applications"))
+        #expect(facts.projectDescription!.contains("Battle-tested"))
+    }
+
+    @Test("Returns nil for unfilled MASTER_PLAN.md template")
+    func nilForUnfilledTemplate() async throws {
+        let template = """
+        # [PROJECT_NAME] Master Plan
+
+        ## Project Overview
+
+        ### Mission
+        [Describe the core mission of this project - what problem does it solve?]
+
+        ### Target Users
+        - [User type 1]
+        """
+        let dir = try createProjectFixture(masterPlanContent: template)
+        let extractor = DesignDocExtractor()
+        let facts = try await extractor.extract(from: dir)
+
+        #expect(facts.projectDescription == nil)
+    }
+
+    @Test("Returns nil when no MASTER_PLAN.md exists")
+    func nilWhenNoMasterPlan() async throws {
+        let dir = try createProjectFixture()
+        let extractor = DesignDocExtractor()
+        let facts = try await extractor.extract(from: dir)
+
+        #expect(facts.projectDescription == nil)
+    }
+
+    @Test("Extracts partial description when only Mission is filled")
+    func partialDescriptionMissionOnly() async throws {
+        let masterPlan = """
+        # MyProject Master Plan
+
+        ## Project Overview
+
+        ### Mission
+        A tool for automated deployment of Swift packages.
+
+        ---
+
+        ## Architecture
+        """
+        let dir = try createProjectFixture(masterPlanContent: masterPlan)
+        let extractor = DesignDocExtractor()
+        let facts = try await extractor.extract(from: dir)
+
+        #expect(facts.projectDescription != nil)
+        #expect(facts.projectDescription!.contains("automated deployment"))
     }
 
     @Test("Extracts architecture notes from CLAUDE.md headings")

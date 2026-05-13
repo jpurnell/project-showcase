@@ -37,6 +37,7 @@ public struct PortfolioPromptBuilder: Sendable {
         - Ground claims in aggregate data — total commits, total tests, shared dependencies
         - Highlight trajectory and growth over time using first/latest commit dates
         - If design proposals or design-first workflows appear across multiple projects, emphasize this as a core practice
+        - If individual projects include a "Project Description" from their MASTER_PLAN.md, use it as the authoritative description of what each project does — do not contradict or embellish beyond what the project states about itself
         - Never fabricate data not present in the input
         - Output pure markdown, no code fences around the entire response
         """
@@ -136,6 +137,10 @@ public struct PortfolioPromptBuilder: Sendable {
 
             if let insights = card.insights {
                 projectSection += "- \(insights.sessionCount) Claude Code sessions, \(insights.totalCommits) commits\n"
+            }
+
+            if let description = card.designArtifacts?.projectDescription {
+                projectSection += "- Description: \(description)\n"
             }
 
             sections.append(projectSection)
