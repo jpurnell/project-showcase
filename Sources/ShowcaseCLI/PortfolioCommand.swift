@@ -48,12 +48,25 @@ struct PortfolioCommand: AsyncParsableCommand {
         let outputDir = URL(fileURLWithPath: output)
         try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
 
-        let dateString = ISO8601DateFormatter().string(from: Date())
+        let now = Date()
+        let dateTimeFormatter = DateFormatter()
+        dateTimeFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+        dateTimeFormatter.timeZone = TimeZone(identifier: "UTC")
+        let shortDateFormatter = DateFormatter()
+        shortDateFormatter.dateFormat = "yyyy-MM-dd"
+        shortDateFormatter.timeZone = TimeZone(identifier: "UTC")
+
+        let projectList = cards.map(\.projectName).joined(separator: ", ")
+
         var markdown = "---\n"
-        markdown += "title: \"Developer Portfolio Overview\"\n"
-        markdown += "date: \(dateString)\n"
-        markdown += "tags: [\"portfolio\", \"overview\"]\n"
-        markdown += "projects: [\(cards.map { "\"\($0.projectName)\"" }.joined(separator: ", "))]\n"
+        markdown += "title: Developer Portfolio Overview\n"
+        markdown += "description: Cross-project portfolio covering \(cards.count) projects and \(cards.reduce(0) { $0 + $1.git.commitCount }) total commits.\n"
+        markdown += "date: \(dateTimeFormatter.string(from: now))\n"
+        markdown += "lastModified: \(shortDateFormatter.string(from: now))\n"
+        markdown += "tags: showcase, portfolio, overview\n"
+        markdown += "layout: ShowcaseLayout\n"
+        markdown += "projects: \(projectList)\n"
+        markdown += "published: true\n"
         markdown += "---\n\n"
         markdown += text
         markdown += "\n"

@@ -14,16 +14,30 @@ public struct MarkdownRenderer: Sendable {
 
     /// Render a narrative to a markdown string with YAML frontmatter.
     public func render(narrative: NarrativeResult) throws -> String {
-        let dateFormatter = ISO8601DateFormatter()
-        let dateString = dateFormatter.string(from: narrative.generatedAt)
+        let dateTimeFormatter = DateFormatter()
+        dateTimeFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+        dateTimeFormatter.timeZone = TimeZone(identifier: "UTC")
+        let dateString = dateTimeFormatter.string(from: narrative.generatedAt)
+
+        let shortDateFormatter = DateFormatter()
+        shortDateFormatter.dateFormat = "yyyy-MM-dd"
+        shortDateFormatter.timeZone = TimeZone(identifier: "UTC")
+        let shortDateString = shortDateFormatter.string(from: narrative.generatedAt)
+
+        let projectTag = narrative.projectName.lowercased()
+        let audienceTag = narrative.audience.rawValue
+        let tags = "showcase, project, \(projectTag), \(audienceTag)"
 
         var output = "---\n"
-        output += "title: \"\(escapeYAML(narrative.title))\"\n"
-        output += "description: \"\(escapeYAML(narrative.summary))\"\n"
+        output += "title: \(narrative.title)\n"
+        output += "description: \(narrative.summary)\n"
         output += "date: \(dateString)\n"
-        output += "tags: [\"portfolio\", \"\(narrative.projectName.lowercased())\", \"\(narrative.audience.rawValue)\"]\n"
+        output += "lastModified: \(shortDateString)\n"
+        output += "tags: \(tags)\n"
+        output += "layout: ShowcaseLayout\n"
         output += "style: \(narrative.style.rawValue)\n"
         output += "project: \(narrative.projectName)\n"
+        output += "published: true\n"
         output += "---\n"
 
         output += "\n"
@@ -52,11 +66,5 @@ public struct MarkdownRenderer: Sendable {
         let fileURL = outputDirectory.appendingPathComponent(fileName)
         try content.write(to: fileURL, atomically: true, encoding: .utf8)
         return fileURL
-    }
-
-    private func escapeYAML(_ string: String) -> String {
-        string
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 }

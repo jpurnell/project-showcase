@@ -97,4 +97,71 @@ struct MarkdownRendererTests {
 
         #expect(output.contains("description:"))
     }
+
+    // MARK: - Ignite-compatible frontmatter tests
+
+    @Test("Date format matches Ignite parser")
+    func dateFormatMatchesIgnite() throws {
+        let renderer = MarkdownRenderer()
+        let output = try renderer.render(narrative: Self.sampleNarrative)
+
+        // Ignite parses "yyyy-MM-dd HH:mm", not ISO8601 with T and Z
+        let lines = output.components(separatedBy: "\n")
+        let dateLine = lines.first(where: { $0.hasPrefix("date:") })
+        #expect(dateLine != nil, "Should have a date: line")
+        #expect(dateLine?.contains("T") == false, "Date should not contain ISO8601 T separator")
+        #expect(dateLine?.contains("Z") == false, "Date should not contain Z suffix")
+        // The sample date is 2023-11-14 (epoch 1_700_000_000)
+        #expect(dateLine?.contains("2023-11-14") == true, "Date should contain yyyy-MM-dd")
+    }
+
+    @Test("Tags are comma-separated without brackets")
+    func tagsCommaSeparatedNoBrackets() throws {
+        let renderer = MarkdownRenderer()
+        let output = try renderer.render(narrative: Self.sampleNarrative)
+
+        let lines = output.components(separatedBy: "\n")
+        let tagsLine = lines.first(where: { $0.hasPrefix("tags:") })
+        #expect(tagsLine != nil, "Should have a tags: line")
+        #expect(tagsLine?.contains("[") == false, "Tags should not contain opening bracket")
+        #expect(tagsLine?.contains("]") == false, "Tags should not contain closing bracket")
+        #expect(tagsLine?.contains("showcase, project, businessmath, hiringManager") == true,
+                "Tags should be comma-separated with showcase and project")
+    }
+
+    @Test("Layout key is present")
+    func layoutKeyPresent() throws {
+        let renderer = MarkdownRenderer()
+        let output = try renderer.render(narrative: Self.sampleNarrative)
+
+        #expect(output.contains("layout: ShowcaseLayout"))
+    }
+
+    @Test("Published key is present")
+    func publishedKeyPresent() throws {
+        let renderer = MarkdownRenderer()
+        let output = try renderer.render(narrative: Self.sampleNarrative)
+
+        #expect(output.contains("published: true"))
+    }
+
+    @Test("Title is not quoted")
+    func titleNotQuoted() throws {
+        let renderer = MarkdownRenderer()
+        let output = try renderer.render(narrative: Self.sampleNarrative)
+
+        let lines = output.components(separatedBy: "\n")
+        let titleLine = lines.first(where: { $0.hasPrefix("title:") })
+        #expect(titleLine != nil, "Should have a title: line")
+        #expect(titleLine?.contains("title: \"") == false,
+                "Title value should not be wrapped in quotes")
+    }
+
+    @Test("LastModified key is present")
+    func lastModifiedPresent() throws {
+        let renderer = MarkdownRenderer()
+        let output = try renderer.render(narrative: Self.sampleNarrative)
+
+        #expect(output.contains("lastModified: 2023-11-14"))
+    }
 }
