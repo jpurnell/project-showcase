@@ -55,11 +55,11 @@ showcase render narrative.json --output ./content/
 showcase infographics card.json --output ./assets/images/
 ```
 
-**Single project, all-in-one:**
+**Single project, all-in-one** (`refresh` is the default command):
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
-showcase refresh ~/Code/MyProject --audience hiringManager --style caseStudy --output ./content/
+showcase ~/Code/MyProject --audience hiringManager --style caseStudy --output ./content/
 ```
 
 **Batch processing multiple projects:**
