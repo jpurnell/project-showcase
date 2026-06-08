@@ -155,10 +155,10 @@ struct DesignDocExtractorTests {
         let extractor = DesignDocExtractor()
         let facts = try await extractor.extract(from: dir)
 
-        #expect(facts.projectDescription != nil)
-        #expect(facts.projectDescription!.contains("complex math problems"))
-        #expect(facts.projectDescription!.contains("financial applications"))
-        #expect(facts.projectDescription!.contains("Battle-tested"))
+        let description = try #require(facts.projectDescription)
+        #expect(description.contains("complex math problems"))
+        #expect(description.contains("financial applications"))
+        #expect(description.contains("Battle-tested"))
     }
 
     @Test("Returns nil for unfilled MASTER_PLAN.md template")
@@ -208,8 +208,8 @@ struct DesignDocExtractorTests {
         let extractor = DesignDocExtractor()
         let facts = try await extractor.extract(from: dir)
 
-        #expect(facts.projectDescription != nil)
-        #expect(facts.projectDescription!.contains("automated deployment"))
+        let description = try #require(facts.projectDescription)
+        #expect(description.contains("automated deployment"))
     }
 
     @Test("Extracts architecture notes from CLAUDE.md headings")

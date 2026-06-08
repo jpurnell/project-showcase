@@ -10,11 +10,13 @@ import Foundation
 /// Extracts facts from a project's git repository.
 public struct GitExtractor: Sendable {
 
+    /// Creates a new GitExtractor instance.
     public init() {}
 
     /// Extract git facts from the repository at the given path.
     public func extract(from projectPath: URL) async throws -> GitFacts {
-        let gitDir = projectPath.appendingPathComponent(".git")
+        let gitDir = projectPath.appendingPathComponent(".git").standardized
+        // SAFETY: gitDir is .standardized, bounded to projectPath
         guard FileManager.default.fileExists(atPath: gitDir.path) else {
             throw ShowcaseError.notAGitRepository(path: projectPath.path)
         }
@@ -124,10 +126,12 @@ public struct GitExtractor: Sendable {
             .appendingPathComponent("showcase-git-\(UUID().uuidString).txt")
         let fullScript = "(\(script)) > '\(outputFile.path)' 2>/dev/null"
 
+        // SAFETY: Executable hardcoded to /bin/zsh, script is internal string literal not user input
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        let shellPath = "/bin/zsh"
+        process.executableURL = URL(fileURLWithPath: shellPath)
         process.arguments = ["-c", fullScript]
-        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+        process.currentDirectoryURL = URL(fileURLWithPath: directory).standardized
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
@@ -135,8 +139,9 @@ public struct GitExtractor: Sendable {
         try process.run()
         process.waitUntilExit()
 
-        defer { try? FileManager.default.removeItem(at: outputFile) }
+        defer { try? FileManager.default.removeItem(at: outputFile) } // silent: git data extraction
 
+        // SAFETY: outputFile is from FileManager.temporaryDirectory, no user-controlled path components
         guard FileManager.default.fileExists(atPath: outputFile.path) else {
             return ""
         }

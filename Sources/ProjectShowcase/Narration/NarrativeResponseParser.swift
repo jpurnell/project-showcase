@@ -10,6 +10,7 @@ import Foundation
 /// Parses Claude API responses into structured NarrativeResult.
 public struct NarrativeResponseParser: Sendable {
 
+    /// Creates a new NarrativeResponseParser instance.
     public init() {}
 
     /// Parse a raw text response into a NarrativeResult.

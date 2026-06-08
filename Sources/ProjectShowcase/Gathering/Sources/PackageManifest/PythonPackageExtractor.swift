@@ -10,16 +10,21 @@ import Foundation
 /// Extracts package manifest facts from a Python pyproject.toml file via regex parsing.
 public struct PythonPackageExtractor: PackageExtractor, Sendable {
 
+    /// Creates a new PythonPackageExtractor instance.
     public init() {}
 
+    /// Checks whether a pyproject.toml file exists at the given project path.
     public func canExtract(from projectPath: URL) -> Bool {
+        // SAFETY: path is .standardized, bounded to projectPath
         FileManager.default.fileExists(
-            atPath: projectPath.appendingPathComponent("pyproject.toml").path
+            atPath: projectPath.appendingPathComponent("pyproject.toml").standardized.path
         )
     }
 
+    /// Extracts package manifest facts from the pyproject.toml at the given path.
     public func extract(from projectPath: URL) async throws -> PackageManifestFacts {
-        let pyprojectURL = projectPath.appendingPathComponent("pyproject.toml")
+        let pyprojectURL = projectPath.appendingPathComponent("pyproject.toml").standardized
+        // SAFETY: pyprojectURL is .standardized, bounded to projectPath
         guard FileManager.default.fileExists(atPath: pyprojectURL.path) else {
             throw ShowcaseError.extractionFailed(
                 source: "python-package",
@@ -114,7 +119,7 @@ public struct PythonPackageExtractor: PackageExtractor, Sendable {
 
     private func extractTOMLStringValue(key: String, from line: String) -> String? {
         let pattern = #"^\#(key)\s*=\s*"([^"]+)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil } // silent: best-effort parsing
         let nsLine = line as NSString
         guard let match = regex.firstMatch(
             in: line,

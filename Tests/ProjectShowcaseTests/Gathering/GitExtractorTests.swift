@@ -91,11 +91,9 @@ struct GitExtractorTests {
         let extractor = GitExtractor()
         let facts = try await extractor.extract(from: URL(fileURLWithPath: fixtureRepoPath))
 
-        #expect(facts.firstCommitDate != nil)
-        #expect(facts.latestCommitDate != nil)
-        if let first = facts.firstCommitDate, let latest = facts.latestCommitDate {
-            #expect(first <= latest)
-        }
+        let first = try #require(facts.firstCommitDate)
+        let latest = try #require(facts.latestCommitDate)
+        #expect(first <= latest)
     }
 
     @Test("Throws for non-git directory")

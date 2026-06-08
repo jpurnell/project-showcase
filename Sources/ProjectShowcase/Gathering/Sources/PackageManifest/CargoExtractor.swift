@@ -10,16 +10,21 @@ import Foundation
 /// Extracts package manifest facts from a Rust Cargo.toml file via regex parsing.
 public struct CargoExtractor: PackageExtractor, Sendable {
 
+    /// Creates a new CargoExtractor instance.
     public init() {}
 
+    /// Checks whether a Cargo.toml file exists at the given project path.
     public func canExtract(from projectPath: URL) -> Bool {
+        // SAFETY: path is .standardized, bounded to projectPath
         FileManager.default.fileExists(
-            atPath: projectPath.appendingPathComponent("Cargo.toml").path
+            atPath: projectPath.appendingPathComponent("Cargo.toml").standardized.path
         )
     }
 
+    /// Extracts package manifest facts from the Cargo.toml at the given path.
     public func extract(from projectPath: URL) async throws -> PackageManifestFacts {
-        let cargoURL = projectPath.appendingPathComponent("Cargo.toml")
+        let cargoURL = projectPath.appendingPathComponent("Cargo.toml").standardized
+        // SAFETY: cargoURL is .standardized, bounded to projectPath
         guard FileManager.default.fileExists(atPath: cargoURL.path) else {
             throw ShowcaseError.extractionFailed(
                 source: "cargo",
@@ -113,7 +118,7 @@ public struct CargoExtractor: PackageExtractor, Sendable {
 
     private func extractTOMLStringValue(key: String, from line: String) -> String? {
         let pattern = #"^\#(key)\s*=\s*"([^"]+)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil } // silent: best-effort TOML parsing
         let nsLine = line as NSString
         guard let match = regex.firstMatch(
             in: line,

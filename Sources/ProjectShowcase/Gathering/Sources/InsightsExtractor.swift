@@ -10,6 +10,7 @@ import Foundation
 /// Extracts and aggregates Claude Code usage data from facets and session-meta directories.
 public struct InsightsExtractor: Sendable {
 
+    /// Creates a new InsightsExtractor instance.
     public init() {}
 
     /// Extract insights from the given usage-data directory.
@@ -20,10 +21,11 @@ public struct InsightsExtractor: Sendable {
     /// - Throws: `ShowcaseError.extractionFailed` if data cannot be parsed.
     /// - Returns: Aggregated insights summary.
     public func extract(from usageDataPath: URL, projectPath: String? = nil) async throws -> InsightsSummary {
-        let facetsDir = usageDataPath.appendingPathComponent("facets")
-        let sessionDir = usageDataPath.appendingPathComponent("session-meta")
+        let facetsDir = usageDataPath.appendingPathComponent("facets").standardized
+        let sessionDir = usageDataPath.appendingPathComponent("session-meta").standardized
         let fm = FileManager.default
 
+        // SAFETY: facetsDir and sessionDir are .standardized, bounded to usageDataPath subdirectories
         guard fm.fileExists(atPath: facetsDir.path) else {
             throw ShowcaseError.extractionFailed(
                 source: "insights",
@@ -32,7 +34,7 @@ public struct InsightsExtractor: Sendable {
         }
 
         let metaFiles: [URL]
-        if fm.fileExists(atPath: sessionDir.path) {
+        if fm.fileExists(atPath: sessionDir.path) { // SAFETY: sessionDir is .standardized
             metaFiles = try fm.contentsOfDirectory(at: sessionDir, includingPropertiesForKeys: nil)
                 .filter { $0.pathExtension == "json" }
         } else {
@@ -46,7 +48,7 @@ public struct InsightsExtractor: Sendable {
             var ids = Set<String>()
             for file in metaFiles {
                 let data = try Data(contentsOf: file)
-                guard let meta = try? decoder.decode(SessionMetaRecord.self, from: data) else {
+                guard let meta = try? decoder.decode(SessionMetaRecord.self, from: data) else { // silent: best-effort extraction
                     continue
                 }
                 if let metaPath = meta.projectPath, metaPath == projectPath {
@@ -74,7 +76,7 @@ public struct InsightsExtractor: Sendable {
 
         for file in facetFiles {
             let data = try Data(contentsOf: file)
-            guard let facet = try? decoder.decode(FacetRecord.self, from: data) else {
+            guard let facet = try? decoder.decode(FacetRecord.self, from: data) else { // silent: best-effort extraction
                 continue
             }
 
@@ -102,7 +104,7 @@ public struct InsightsExtractor: Sendable {
 
         for file in relevantMetaFiles {
             let data = try Data(contentsOf: file)
-            guard let meta = try? decoder.decode(SessionMetaRecord.self, from: data) else {
+            guard let meta = try? decoder.decode(SessionMetaRecord.self, from: data) else { // silent: best-effort extraction
                 continue
             }
 
@@ -129,7 +131,8 @@ public struct InsightsExtractor: Sendable {
 
     /// Extract insights if the directory contains valid data, otherwise return nil.
     public func extractOptional(from usageDataPath: URL, projectPath: String? = nil) async throws -> InsightsSummary? {
-        let facetsDir = usageDataPath.appendingPathComponent("facets")
+        let facetsDir = usageDataPath.appendingPathComponent("facets").standardized
+        // SAFETY: facetsDir is .standardized, bounded to usageDataPath
         guard FileManager.default.fileExists(atPath: facetsDir.path) else {
             return nil
         }

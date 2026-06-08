@@ -11,6 +11,7 @@ import Foundation
 /// Swift Testing and XCTest summary lines.
 public struct TestOutputParser: Sendable {
 
+    /// Creates a new TestOutputParser instance.
     public init() {}
 
     /// Parse the given test output and return aggregated test facts.
@@ -82,7 +83,7 @@ public struct TestOutputParser: Sendable {
 
     private func parseSwiftTesting(_ output: String) -> SwiftTestingResult? {
         // Pattern: "Test run with 58 tests in 11 suites passed after 0.512 seconds."
-        guard let regex = try? NSRegularExpression(
+        guard let regex = try? NSRegularExpression( // silent: pattern is a compile-time literal
             pattern: #"Test run with (\d+) tests? in (\d+) suites? (passed|failed) after"#,
             options: []
         ) else { return nil }
@@ -110,7 +111,7 @@ public struct TestOutputParser: Sendable {
 
     private func parseXCTest(_ output: String) -> XCTestResult? {
         // Pattern: "Executed 53 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds"
-        guard let regex = try? NSRegularExpression(
+        guard let regex = try? NSRegularExpression( // silent: pattern is a compile-time literal
             pattern: #"Executed (\d+) tests?, with (\d+) failures?"#,
             options: []
         ) else { return nil }

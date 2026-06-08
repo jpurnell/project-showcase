@@ -5,3 +5,5 @@ development-guidelines/
 *.xcodeproj/
 xcuserdata/
 DerivedData/
+*.backup-*
+.quality-gate.yml

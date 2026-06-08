@@ -3,6 +3,7 @@ import Foundation
 /// Builds prompts for cross-project portfolio overview narratives.
 public struct PortfolioPromptBuilder: Sendable {
 
+    /// Creates a new PortfolioPromptBuilder instance.
     public init() {}
 
     /// Build the system prompt for portfolio overview generation.
@@ -28,7 +29,7 @@ public struct PortfolioPromptBuilder: Sendable {
         3. Overview — the developer's scope, themes, and trajectory
         4. Technical Breadth — languages, platforms, and domains covered
         5. Craft Signals — patterns that appear across projects (testing discipline, design-first workflow, release rigor)
-        6. Key Projects — brief highlights of the most notable work
+        6. Key Projects — brief highlights of the most notable work; for each project mentioned, state what it does and why it exists before discussing metrics
         Each section should be a markdown H2.
 
         Guidelines:
@@ -108,6 +109,11 @@ public struct PortfolioPromptBuilder: Sendable {
 
         for card in cards {
             var projectSection = "## Project: \(card.projectName)\n"
+
+            if let description = card.designArtifacts?.projectDescription {
+                projectSection += "\(description)\n\n"
+            }
+
             projectSection += "- \(card.git.commitCount) commits"
             if !card.git.releaseHistory.isEmpty {
                 projectSection += ", \(card.git.releaseHistory.count) releases"
@@ -120,6 +126,9 @@ public struct PortfolioPromptBuilder: Sendable {
                     projectSection += " targeting \(pkg.platforms.joined(separator: ", "))"
                 }
                 projectSection += "\n"
+                if !pkg.dependencies.isEmpty {
+                    projectSection += "- Dependencies: \(pkg.dependencies.joined(separator: ", "))\n"
+                }
             }
 
             if let tests = card.tests {
@@ -133,14 +142,13 @@ public struct PortfolioPromptBuilder: Sendable {
                 if design.hasDesignFirstWorkflow {
                     projectSection += "- Uses design-first workflow\n"
                 }
+                if !design.architectureNotes.isEmpty {
+                    projectSection += "- Architecture: \(design.architectureNotes.joined(separator: ", "))\n"
+                }
             }
 
             if let insights = card.insights {
                 projectSection += "- \(insights.sessionCount) Claude Code sessions, \(insights.totalCommits) commits\n"
-            }
-
-            if let description = card.designArtifacts?.projectDescription {
-                projectSection += "- Description: \(description)\n"
             }
 
             sections.append(projectSection)

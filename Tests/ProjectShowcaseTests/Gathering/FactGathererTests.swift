@@ -73,9 +73,9 @@ struct FactGathererTests {
         #expect(card.projectName == "TestProject")
         #expect(card.git.commitCount == 1)
         #expect(card.git.releaseHistory.count == 1)
-        #expect(card.packageManifest != nil)
-        #expect(card.packageManifest?.language == .swift)
-        #expect(card.packageManifest?.toolsVersion == "5.9")
+        let manifest = try #require(card.packageManifest)
+        #expect(manifest.language == .swift)
+        #expect(manifest.toolsVersion == "5.9")
         #expect(card.designArtifacts?.hasClaudeMD == true)
     }
 

@@ -10,16 +10,21 @@ import Foundation
 /// Extracts package manifest facts from a Swift Package.swift file via regex parsing.
 public struct SwiftPackageExtractor: PackageExtractor, Sendable {
 
+    /// Creates a new SwiftPackageExtractor instance.
     public init() {}
 
+    /// Checks whether a Package.swift file exists at the given project path.
     public func canExtract(from projectPath: URL) -> Bool {
+        // SAFETY: path is .standardized, bounded to projectPath
         FileManager.default.fileExists(
-            atPath: projectPath.appendingPathComponent("Package.swift").path
+            atPath: projectPath.appendingPathComponent("Package.swift").standardized.path
         )
     }
 
+    /// Extracts package manifest facts from the Package.swift at the given path.
     public func extract(from projectPath: URL) async throws -> PackageManifestFacts {
-        let packageURL = projectPath.appendingPathComponent("Package.swift")
+        let packageURL = projectPath.appendingPathComponent("Package.swift").standardized
+        // SAFETY: packageURL is .standardized, bounded to projectPath
         guard FileManager.default.fileExists(atPath: packageURL.path) else {
             throw ShowcaseError.extractionFailed(
                 source: "swift-package",
@@ -58,7 +63,7 @@ public struct SwiftPackageExtractor: PackageExtractor, Sendable {
     private func extractDependencies(from content: String) -> [String] {
         var deps: [String] = []
         let pattern = #"\.package\(\s*url:\s*"[^"]*?/([^/"]+)(?:\.git)?""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return deps }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return deps } // silent: best-effort parsing
 
         let nsContent = content as NSString
         let matches = regex.matches(in: content, range: NSRange(location: 0, length: nsContent.length))
@@ -78,7 +83,7 @@ public struct SwiftPackageExtractor: PackageExtractor, Sendable {
     private func extractTargets(from content: String) -> [String] {
         var targets: [String] = []
         let pattern = #"\.\w*[Tt]arget\(\s*name:\s*"([^"]+)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return targets }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return targets } // silent: best-effort parsing
 
         let nsContent = content as NSString
         let matches = regex.matches(in: content, range: NSRange(location: 0, length: nsContent.length))

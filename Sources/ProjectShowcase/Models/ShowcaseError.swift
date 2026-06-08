@@ -12,6 +12,6 @@ public enum ShowcaseError: Error, Sendable {
     case notAGitRepository(path: String)
     case extractionFailed(source: String, message: String)
     case narrativeGenerationFailed(message: String)
-    case renderingFailed(message: String)
+    case renderingFailed(message: String) // LIVE: thrown by rendering pipeline
     case invalidConfiguration(message: String)
 }

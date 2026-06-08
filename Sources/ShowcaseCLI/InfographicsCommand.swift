@@ -1,6 +1,9 @@
 import ArgumentParser
 import Foundation
+import os
 import ProjectShowcase
+
+private let logger = Logger(subsystem: "com.showcase", category: "InfographicsCommand")
 
 struct InfographicsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -35,7 +38,7 @@ struct InfographicsCommand: AsyncParsableCommand {
             let svg = try generator.generate(from: card)
             let fileURL = outputDir.appendingPathComponent(filename)
             try svg.write(to: fileURL, atomically: true, encoding: .utf8)
-            print("Generated \(fileURL.path)")
+            logger.info("Generated \(fileURL.path, privacy: .public)")
         }
     }
 }

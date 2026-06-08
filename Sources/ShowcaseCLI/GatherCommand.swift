@@ -1,6 +1,9 @@
 import ArgumentParser
 import Foundation
+import os
 import ProjectShowcase
+
+private let logger = Logger(subsystem: "com.showcase", category: "GatherCommand")
 
 struct GatherCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -44,26 +47,38 @@ struct GatherCommand: AsyncParsableCommand {
 
         if let outputPath = output {
             try json.write(toFile: outputPath, atomically: true, encoding: .utf8)
-            print("Card written to \(outputPath)")
+            logger.info("Card written to \(outputPath, privacy: .public)")
         } else {
-            print(json)
+            logger.info("\(json, privacy: .public)")
         }
     }
 
     private func runTestSuite(at projectPath: URL) async throws -> String {
+        // SAFETY: Executable is hardcoded to /usr/bin/env, arguments validated against shell metacharacters below
         let process = Process()
         let pipe = Pipe()
 
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.arguments = ["test"]
+        let arguments = ["swift", "test"]
+        let shellMetacharacters = CharacterSet(charactersIn: ";|&$`\"'\\<>(){}!")
+        for arg in arguments {
+            guard arg.rangeOfCharacter(from: shellMetacharacters) == nil else {
+                throw ShowcaseError.invalidConfiguration(
+                    message: "Argument contains shell metacharacters: \(arg)"
+                )
+            }
+        }
+
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = arguments
         process.currentDirectoryURL = projectPath
         process.standardOutput = pipe
         process.standardError = pipe
 
         try process.run()
-        process.waitUntilExit()
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
         return String(data: data, encoding: .utf8) ?? ""
     }
 }

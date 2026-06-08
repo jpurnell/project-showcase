@@ -10,6 +10,7 @@ import Foundation
 /// Renders NarrativeResult as generic markdown with YAML frontmatter.
 public struct MarkdownRenderer: Sendable {
 
+    /// Creates a new MarkdownRenderer instance.
     public init() {}
 
     /// Render a narrative to a markdown string with YAML frontmatter.

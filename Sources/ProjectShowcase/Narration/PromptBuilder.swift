@@ -11,6 +11,7 @@ import CryptoKit
 /// Builds prompts for the Claude API from ProjectCards and configuration.
 public struct PromptBuilder: Sendable {
 
+    /// Creates a new PromptBuilder instance.
     public init() {}
 
     /// Build the system prompt for narrative generation.
@@ -34,7 +35,7 @@ public struct PromptBuilder: Sendable {
             Write a case study narrative with this structure:
             1. A compelling title (as a markdown H1)
             2. A one-sentence summary (as a blockquote)
-            3. Problem — what challenge was being addressed
+            3. Problem — what the project is, what problem it solves, and why it was built
             4. Approach — architectural decisions, methodology, tools
             5. Results — quantitative outcomes, what shipped
             6. Judgment Calls — the interesting decisions that show craft
@@ -53,10 +54,11 @@ public struct PromptBuilder: Sendable {
             Write a technical deep-dive for practitioners with:
             1. A descriptive title (markdown H1)
             2. A one-sentence summary (blockquote)
-            3. Architecture — detailed technical design choices
-            4. Implementation — interesting patterns, challenges, solutions
-            5. Testing Strategy — how quality is ensured
-            6. Lessons — what transferred to other projects
+            3. Overview — what the project does, why it exists, and who it's for
+            4. Architecture — detailed technical design choices
+            5. Implementation — interesting patterns, challenges, solutions
+            6. Testing Strategy — how quality is ensured
+            7. Lessons — what transferred to other projects
             Each section should be a markdown H2. Use code examples where relevant.
             """
         }
@@ -204,6 +206,11 @@ public struct PromptBuilder: Sendable {
         encoder.outputFormatting = .sortedKeys
         let data = try encoder.encode(card)
         let digest = SHA256.hash(data: data)
-        return digest.prefix(16).map { String(format: "%02x", $0) }.joined()
+        return digest.prefix(16).map { byte in
+            let hex = "0123456789abcdef"
+            let hi = hex[hex.index(hex.startIndex, offsetBy: Int(byte >> 4))]
+            let lo = hex[hex.index(hex.startIndex, offsetBy: Int(byte & 0x0F))]
+            return "\(hi)\(lo)"
+        }.joined()
     }
 }

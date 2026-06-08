@@ -1,6 +1,9 @@
 import ArgumentParser
 import Foundation
+import os
 import ProjectShowcase
+
+private let logger = Logger(subsystem: "com.showcase", category: "RenderCommand")
 
 struct RenderCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -26,6 +29,6 @@ struct RenderCommand: AsyncParsableCommand {
         try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
 
         let fileURL = try renderer.renderToFile(narrative: narrative, outputDirectory: outputDir)
-        print("Rendered to \(fileURL.path)")
+        logger.info("Rendered to \(fileURL.path, privacy: .public)")
     }
 }

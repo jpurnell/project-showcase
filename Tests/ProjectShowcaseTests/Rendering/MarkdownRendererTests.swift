@@ -107,12 +107,14 @@ struct MarkdownRendererTests {
 
         // Ignite parses "yyyy-MM-dd HH:mm", not ISO8601 with T and Z
         let lines = output.components(separatedBy: "\n")
-        let dateLine = lines.first(where: { $0.hasPrefix("date:") })
-        #expect(dateLine != nil, "Should have a date: line")
-        #expect(dateLine?.contains("T") == false, "Date should not contain ISO8601 T separator")
-        #expect(dateLine?.contains("Z") == false, "Date should not contain Z suffix")
+        let dateLine = try #require(
+            lines.first(where: { $0.hasPrefix("date:") }),
+            "Should have a date: line"
+        )
+        #expect(dateLine.contains("T") == false, "Date should not contain ISO8601 T separator")
+        #expect(dateLine.contains("Z") == false, "Date should not contain Z suffix")
         // The sample date is 2023-11-14 (epoch 1_700_000_000)
-        #expect(dateLine?.contains("2023-11-14") == true, "Date should contain yyyy-MM-dd")
+        #expect(dateLine.contains("2023-11-14") == true, "Date should contain yyyy-MM-dd")
     }
 
     @Test("Tags are comma-separated without brackets")
@@ -121,11 +123,13 @@ struct MarkdownRendererTests {
         let output = try renderer.render(narrative: Self.sampleNarrative)
 
         let lines = output.components(separatedBy: "\n")
-        let tagsLine = lines.first(where: { $0.hasPrefix("tags:") })
-        #expect(tagsLine != nil, "Should have a tags: line")
-        #expect(tagsLine?.contains("[") == false, "Tags should not contain opening bracket")
-        #expect(tagsLine?.contains("]") == false, "Tags should not contain closing bracket")
-        #expect(tagsLine?.contains("showcase, project, businessmath, hiringManager") == true,
+        let tagsLine = try #require(
+            lines.first(where: { $0.hasPrefix("tags:") }),
+            "Should have a tags: line"
+        )
+        #expect(tagsLine.contains("[") == false, "Tags should not contain opening bracket")
+        #expect(tagsLine.contains("]") == false, "Tags should not contain closing bracket")
+        #expect(tagsLine.contains("showcase, project, businessmath, hiringManager") == true,
                 "Tags should be comma-separated with showcase and project")
     }
 
@@ -151,9 +155,11 @@ struct MarkdownRendererTests {
         let output = try renderer.render(narrative: Self.sampleNarrative)
 
         let lines = output.components(separatedBy: "\n")
-        let titleLine = lines.first(where: { $0.hasPrefix("title:") })
-        #expect(titleLine != nil, "Should have a title: line")
-        #expect(titleLine?.contains("title: \"") == false,
+        let titleLine = try #require(
+            lines.first(where: { $0.hasPrefix("title:") }),
+            "Should have a title: line"
+        )
+        #expect(titleLine.contains("title: \"") == false,
                 "Title value should not be wrapped in quotes")
     }
 

@@ -1,6 +1,9 @@
 import ArgumentParser
 import Foundation
+import os
 import ProjectShowcase
+
+private let logger = Logger(subsystem: "com.showcase", category: "PortfolioCommand")
 
 struct PortfolioCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -21,7 +24,7 @@ struct PortfolioCommand: AsyncParsableCommand {
     var output: String = "."
 
     func run() async throws {
-        let key = resolveAPIKey()
+        let key = try resolveAPIKey()
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -31,7 +34,7 @@ struct PortfolioCommand: AsyncParsableCommand {
             let data = try Data(contentsOf: URL(fileURLWithPath: path))
             let card = try decoder.decode(ProjectCard.self, from: data)
             cards.append(card)
-            print("Loaded: \(card.projectName) (\(card.git.commitCount) commits)")
+            logger.info("Loaded: \(card.projectName, privacy: .public) (\(card.git.commitCount, privacy: .public) commits)")
         }
 
         guard let audienceEnum = Audience(rawValue: audience) else {
@@ -40,7 +43,7 @@ struct PortfolioCommand: AsyncParsableCommand {
             )
         }
 
-        print("Generating portfolio overview for \(cards.count) projects...")
+        logger.info("Generating portfolio overview for \(cards.count, privacy: .public) projects...")
 
         let generator = NarrativeGenerator(apiKey: key)
         let text = try await generator.generatePortfolio(cards: cards, audience: audienceEnum)
@@ -74,14 +77,16 @@ struct PortfolioCommand: AsyncParsableCommand {
         let fileURL = outputDir.appendingPathComponent("portfolio-overview.md")
         try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
 
-        print("Portfolio written to \(fileURL.path)")
+        logger.info("Portfolio written to \(fileURL.path, privacy: .public)")
     }
 
-    private func resolveAPIKey() -> String {
+    private func resolveAPIKey() throws -> String {
         if let key = apiKey, !key.isEmpty { return key }
         if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
             return envKey
         }
-        fatalError("No API key provided. Use --api-key or set ANTHROPIC_API_KEY environment variable.")
+        throw ShowcaseError.invalidConfiguration(
+            message: "No API key provided. Use --api-key or set ANTHROPIC_API_KEY environment variable."
+        )
     }
 }

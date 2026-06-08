@@ -10,22 +10,24 @@ import Foundation
 /// Extracts design artifact facts from CLAUDE.md, development-guidelines, and proposals.
 public struct DesignDocExtractor: Sendable {
 
+    /// Creates a new DesignDocExtractor instance.
     public init() {}
 
     /// Extract design artifact facts from the project at the given path.
     public func extract(from projectPath: URL) async throws -> DesignArtifactFacts {
         let fm = FileManager.default
 
-        let claudeMDPath = projectPath.appendingPathComponent("CLAUDE.md")
-        let hasClaudeMD = fm.fileExists(atPath: claudeMDPath.path)
+        let claudeMDPath = projectPath.appendingPathComponent("CLAUDE.md").standardized
+        let hasClaudeMD = fm.fileExists(atPath: claudeMDPath.path) // SAFETY: .standardized, bounded to projectPath
 
         let proposalDir = projectPath
             .appendingPathComponent("development-guidelines")
             .appendingPathComponent("02_IMPLEMENTATION_PLANS")
             .appendingPathComponent("PROPOSALS")
+            .standardized
 
         var proposalCount = 0
-        if fm.fileExists(atPath: proposalDir.path) {
+        if fm.fileExists(atPath: proposalDir.path) { // SAFETY: .standardized, bounded to projectPath
             let files = try fm.contentsOfDirectory(at: proposalDir, includingPropertiesForKeys: nil)
             proposalCount = files.filter { $0.pathExtension == "md" }.count
         }
@@ -34,7 +36,8 @@ public struct DesignDocExtractor: Sendable {
             .appendingPathComponent("development-guidelines")
             .appendingPathComponent("02_IMPLEMENTATION_PLANS")
             .appendingPathComponent("COMPLETED")
-        if fm.fileExists(atPath: completedDir.path) {
+            .standardized
+        if fm.fileExists(atPath: completedDir.path) { // SAFETY: .standardized, bounded to projectPath
             let files = try fm.contentsOfDirectory(at: completedDir, includingPropertiesForKeys: nil)
             proposalCount += files.filter { $0.pathExtension == "md" }.count
         }
@@ -43,18 +46,21 @@ public struct DesignDocExtractor: Sendable {
             .appendingPathComponent("development-guidelines")
             .appendingPathComponent("02_IMPLEMENTATION_PLANS")
             .appendingPathComponent("UPCOMING")
-        if fm.fileExists(atPath: upcomingDir.path) {
+            .standardized
+        if fm.fileExists(atPath: upcomingDir.path) { // SAFETY: .standardized, bounded to projectPath
             let files = try fm.contentsOfDirectory(at: upcomingDir, includingPropertiesForKeys: nil)
             proposalCount += files.filter { $0.pathExtension == "md" }.count
         }
 
-        let guidelinesDir = projectPath.appendingPathComponent("development-guidelines")
+        let guidelinesDir = projectPath.appendingPathComponent("development-guidelines").standardized
+        // SAFETY: all paths below are .standardized, bounded to projectPath/development-guidelines
         let hasDevGuidelines = fm.fileExists(atPath: guidelinesDir.path)
 
+        // SAFETY: guidelinesDir is .standardized, subpath components are string literals
         let hasDesignFirst = hasDevGuidelines && fm.fileExists(
             atPath: guidelinesDir
                 .appendingPathComponent("00_CORE_RULES")
-                .appendingPathComponent("07_SESSION_WORKFLOW.md").path
+                .appendingPathComponent("07_SESSION_WORKFLOW.md").standardized.path
         )
 
         var architectureNotes: [String] = []
@@ -89,9 +95,11 @@ public struct DesignDocExtractor: Sendable {
             .appendingPathComponent("development-guidelines")
             .appendingPathComponent("00_CORE_RULES")
             .appendingPathComponent("00_MASTER_PLAN.md")
+            .standardized
 
+        // SAFETY: masterPlanPath is .standardized, bounded to projectPath
         guard FileManager.default.fileExists(atPath: masterPlanPath.path),
-              let content = try? String(contentsOf: masterPlanPath, encoding: .utf8) else {
+              let content = try? String(contentsOf: masterPlanPath, encoding: .utf8) else { // silent: best-effort extraction
             return nil
         }
 

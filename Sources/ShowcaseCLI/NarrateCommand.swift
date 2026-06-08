@@ -1,6 +1,9 @@
 import ArgumentParser
 import Foundation
+import os
 import ProjectShowcase
+
+private let logger = Logger(subsystem: "com.showcase", category: "NarrateCommand")
 
 struct NarrateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -24,7 +27,7 @@ struct NarrateCommand: AsyncParsableCommand {
     var output: String?
 
     func run() async throws {
-        let key = resolveAPIKey()
+        let key = try resolveAPIKey()
 
         let cardData = try Data(contentsOf: URL(fileURLWithPath: cardPath))
         let decoder = JSONDecoder()
@@ -60,17 +63,19 @@ struct NarrateCommand: AsyncParsableCommand {
 
         if let outputPath = output {
             try json.write(toFile: outputPath, atomically: true, encoding: .utf8)
-            print("Narrative written to \(outputPath)")
+            logger.info("Narrative written to \(outputPath, privacy: .public)")
         } else {
-            print(json)
+            logger.info("\(json, privacy: .public)")
         }
     }
 
-    private func resolveAPIKey() -> String {
+    private func resolveAPIKey() throws -> String {
         if let key = apiKey, !key.isEmpty { return key }
         if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
             return envKey
         }
-        fatalError("No API key provided. Use --api-key or set ANTHROPIC_API_KEY environment variable.")
+        throw ShowcaseError.invalidConfiguration(
+            message: "No API key provided. Use --api-key or set ANTHROPIC_API_KEY environment variable."
+        )
     }
 }

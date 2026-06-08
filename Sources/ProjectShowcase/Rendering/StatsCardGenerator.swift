@@ -10,8 +10,10 @@ import Foundation
 /// Generates a compact GitHub-style stats badge SVG from a ``ProjectCard``.
 public struct StatsCardGenerator: InfographicGenerator, Sendable {
 
+    /// Creates a new StatsCardGenerator instance.
     public init() {}
 
+    /// Generates a stats badge SVG from the given project card.
     public func generate(from card: ProjectCard) throws -> String {
         let width = 460
         let height = 220

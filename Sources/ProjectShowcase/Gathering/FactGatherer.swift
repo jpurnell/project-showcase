@@ -12,6 +12,7 @@ public struct FactGatherer: Sendable {
 
     private let packageExtractors: [any PackageExtractor]
 
+    /// Creates a new FactGatherer with optional custom package extractors.
     public init(packageExtractors: [any PackageExtractor]? = nil) {
         self.packageExtractors = packageExtractors ?? [
             SwiftPackageExtractor(),
@@ -38,14 +39,14 @@ public struct FactGatherer: Sendable {
         log("Package done. Extracting design docs...")
 
         let designDocExtractor = DesignDocExtractor()
-        let designFacts = try? await designDocExtractor.extract(from: projectPath)
+        let designFacts = try? await designDocExtractor.extract(from: projectPath) // silent: best-effort gathering
         log("Design done. Extracting insights...")
 
         let insightsExtractor = InsightsExtractor()
         let usageDataPath = insightsPath ?? globalUsageDataPath()
         let insightsFacts: InsightsSummary?
         if let dataPath = usageDataPath {
-            insightsFacts = try? await insightsExtractor.extractOptional(
+            insightsFacts = try? await insightsExtractor.extractOptional( // silent: best-effort gathering
                 from: dataPath,
                 projectPath: projectPath.path
             )
@@ -85,6 +86,8 @@ public struct FactGatherer: Sendable {
         let path = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude")
             .appendingPathComponent("usage-data")
+            .standardized
+        // SAFETY: path is .standardized, bounded to homeDirectory/.claude/usage-data
         guard FileManager.default.fileExists(atPath: path.path) else {
             return nil
         }
@@ -94,7 +97,7 @@ public struct FactGatherer: Sendable {
     private func extractPackageManifest(from projectPath: URL) async -> PackageManifestFacts? {
         for extractor in packageExtractors {
             if extractor.canExtract(from: projectPath) {
-                return try? await extractor.extract(from: projectPath)
+                return try? await extractor.extract(from: projectPath) // silent: best-effort gathering
             }
         }
         return nil

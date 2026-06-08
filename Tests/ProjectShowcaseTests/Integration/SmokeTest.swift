@@ -23,11 +23,11 @@ struct SmokeTest {
         let gatherer = FactGatherer()
         let card = try await gatherer.gather(from: projectPath)
 
-        #expect(card.git.commitCount >= 0)
-        #expect(card.packageManifest != nil)
-        #expect(card.packageManifest?.language == .swift)
-        #expect(card.packageManifest?.toolsVersion == "5.9")
-        #expect(card.packageManifest?.dependencies.contains("swift-argument-parser") == true)
+        #expect(card.git.commitCount > 0)
+        let manifest = try #require(card.packageManifest)
+        #expect(manifest.language == .swift)
+        #expect(manifest.toolsVersion == "6.2")
+        #expect(manifest.dependencies.contains("swift-argument-parser") == true)
         #expect(card.designArtifacts?.hasClaudeMD == true)
 
         let encoder = JSONEncoder()

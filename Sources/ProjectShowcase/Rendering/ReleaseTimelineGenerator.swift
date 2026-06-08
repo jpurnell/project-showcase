@@ -10,8 +10,10 @@ import Foundation
 /// Generates a timeline visualization SVG of a project's releases.
 public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
 
+    /// Creates a new ReleaseTimelineGenerator instance.
     public init() {}
 
+    /// Generates a release timeline SVG from the given project card.
     public func generate(from card: ProjectCard) throws -> String {
         let width = 600
         let height = 180

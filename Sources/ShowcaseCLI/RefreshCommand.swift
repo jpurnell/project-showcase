@@ -1,6 +1,9 @@
 import ArgumentParser
 import Foundation
+import os
 import ProjectShowcase
+
+private let logger = Logger(subsystem: "com.showcase", category: "RefreshCommand")
 
 struct RefreshCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -27,15 +30,15 @@ struct RefreshCommand: AsyncParsableCommand {
     var output: String = "."
 
     func run() async throws {
-        let key = resolveAPIKey()
+        let key = try resolveAPIKey()
         let projectURL = URL(fileURLWithPath: projectPath)
         let insightsURL = insightsPath.map { URL(fileURLWithPath: $0) }
 
-        print("Gathering facts from \(projectPath)...")
+        logger.info("Gathering facts from \(projectPath, privacy: .public)...")
         let gatherer = FactGatherer()
         let card = try await gatherer.gather(from: projectURL, insightsPath: insightsURL)
 
-        print("Generating narrative for \(card.projectName)...")
+        logger.info("Generating narrative for \(card.projectName, privacy: .public)...")
         guard let audienceEnum = Audience(rawValue: audience) else {
             throw ShowcaseError.invalidConfiguration(
                 message: "Unknown audience '\(audience)'. Use: hiringManager, openSourceContributor, client, selfReflection"
@@ -54,20 +57,22 @@ struct RefreshCommand: AsyncParsableCommand {
             style: styleEnum
         )
 
-        print("Rendering markdown...")
+        logger.info("Rendering markdown...")
         let renderer = MarkdownRenderer()
         let outputDir = URL(fileURLWithPath: output)
         try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
         let fileURL = try renderer.renderToFile(narrative: narrative, outputDirectory: outputDir)
 
-        print("Done! \(fileURL.path)")
+        logger.info("Done! \(fileURL.path, privacy: .public)")
     }
 
-    private func resolveAPIKey() -> String {
+    private func resolveAPIKey() throws -> String {
         if let key = apiKey, !key.isEmpty { return key }
         if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
             return envKey
         }
-        fatalError("No API key provided. Use --api-key or set ANTHROPIC_API_KEY environment variable.")
+        throw ShowcaseError.invalidConfiguration(
+            message: "No API key provided. Use --api-key or set ANTHROPIC_API_KEY environment variable."
+        )
     }
 }

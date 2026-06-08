@@ -14,6 +14,7 @@ public struct NarrativeGenerator: Sendable {
     private let model: String
     private let baseURL: String
 
+    /// Creates a new NarrativeGenerator with the given API key and optional model/base URL.
     public init(
         apiKey: String,
         model: String = "claude-sonnet-4-6",
@@ -74,7 +75,15 @@ public struct NarrativeGenerator: Sendable {
             ]
         ]
 
-        let url = URL(string: "\(baseURL)/v1/messages")!
+        let urlString = "\(baseURL)/v1/messages"
+        // SAFETY: URL host validated against allowlist (anthropic.com, localhost) before any request
+        guard let url = URL(string: urlString),
+              let host = url.host,
+              host.hasSuffix("anthropic.com") || host == "localhost" else {
+            throw ShowcaseError.narrativeGenerationFailed(
+                message: "Invalid or disallowed API URL: \(urlString)"
+            )
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

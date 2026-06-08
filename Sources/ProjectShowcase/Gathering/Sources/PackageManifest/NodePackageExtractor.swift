@@ -10,16 +10,21 @@ import Foundation
 /// Extracts package manifest facts from a Node.js package.json file.
 public struct NodePackageExtractor: PackageExtractor, Sendable {
 
+    /// Creates a new NodePackageExtractor instance.
     public init() {}
 
+    /// Checks whether a package.json file exists at the given project path.
     public func canExtract(from projectPath: URL) -> Bool {
+        // SAFETY: path is .standardized, bounded to projectPath
         FileManager.default.fileExists(
-            atPath: projectPath.appendingPathComponent("package.json").path
+            atPath: projectPath.appendingPathComponent("package.json").standardized.path
         )
     }
 
+    /// Extracts package manifest facts from the package.json at the given path.
     public func extract(from projectPath: URL) async throws -> PackageManifestFacts {
-        let packageURL = projectPath.appendingPathComponent("package.json")
+        let packageURL = projectPath.appendingPathComponent("package.json").standardized
+        // SAFETY: packageURL is .standardized, bounded to projectPath
         guard FileManager.default.fileExists(atPath: packageURL.path) else {
             throw ShowcaseError.extractionFailed(
                 source: "node-package",

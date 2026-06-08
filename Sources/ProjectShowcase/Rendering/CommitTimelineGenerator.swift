@@ -10,8 +10,10 @@ import Foundation
 /// Generates a horizontal bar chart SVG showing commit activity over time.
 public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
 
+    /// Creates a new CommitTimelineGenerator instance.
     public init() {}
 
+    /// Generates a commit activity timeline SVG from the given project card.
     public func generate(from card: ProjectCard) throws -> String {
         let width = 600
         let height = 200
