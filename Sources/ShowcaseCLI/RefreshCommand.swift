@@ -1,6 +1,8 @@
 import ArgumentParser
 import Foundation
+#if canImport(os)
 import os
+#endif
 import ProjectShowcase
 
 private let logger = Logger(subsystem: "com.showcase", category: "RefreshCommand")
