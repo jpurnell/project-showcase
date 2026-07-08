@@ -1,4 +1,5 @@
 // swift-tools-version: 6.2
+// legibility:description: A Swift CLI tool that extracts structured facts from developer projects and generates AI-powered narrative case-study portfolios with SVG infographics.
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
