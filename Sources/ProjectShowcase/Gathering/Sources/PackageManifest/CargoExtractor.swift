@@ -48,7 +48,7 @@ public struct CargoExtractor: PackageExtractor, Sendable {
     }
 
     private func extractPackageName(from content: String) -> [String] {
-        let lines = content.components(separatedBy: .newlines)
+        let lines = content.lines
         var inPackageSection = false
 
         for line in lines {
@@ -69,7 +69,7 @@ public struct CargoExtractor: PackageExtractor, Sendable {
     }
 
     private func extractEdition(from content: String) -> String? {
-        let lines = content.components(separatedBy: .newlines)
+        let lines = content.lines
         var inPackageSection = false
 
         for line in lines {
@@ -91,7 +91,7 @@ public struct CargoExtractor: PackageExtractor, Sendable {
 
     private func extractDependencies(from content: String) -> [String] {
         var deps: [String] = []
-        let lines = content.components(separatedBy: .newlines)
+        let lines = content.lines
         var inDepsSection = false
 
         for line in lines {

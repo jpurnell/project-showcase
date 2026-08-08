@@ -50,12 +50,12 @@ public struct GitExtractor: Sendable {
         let commits = Int(sections["COMMITS"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0") ?? 0
 
         let tags = (sections["TAGS"] ?? "")
-            .split(separator: "\n")
+            .split(whereSeparator: \.isNewline)
             .map(String.init)
             .filter { !$0.isEmpty }
 
         var tagDates: [String: Date] = [:]
-        for line in (sections["TAG_DATES"] ?? "").split(separator: "\n") {
+        for line in (sections["TAG_DATES"] ?? "").split(whereSeparator: \.isNewline) {
             let parts = line.split(separator: " ", maxSplits: 1)
             if parts.count == 2, let date = formatter.date(from: String(parts[1])) {
                 tagDates[String(parts[0])] = date
@@ -67,13 +67,13 @@ public struct GitExtractor: Sendable {
         }
 
         let branches = (sections["BRANCHES"] ?? "")
-            .split(separator: "\n")
+            .split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .count
 
         let contributors = (sections["CONTRIBUTORS"] ?? "")
-            .split(separator: "\n")
+            .split(whereSeparator: \.isNewline)
             .filter { !$0.isEmpty }
             .count
 
@@ -98,7 +98,7 @@ public struct GitExtractor: Sendable {
         var currentKey: String?
         var currentLines: [String] = []
 
-        for line in output.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
+        for line in output.lines {
             if line.hasPrefix("===") && line.hasSuffix("===") {
                 if let key = currentKey {
                     sections[key] = currentLines.joined(separator: "\n")

@@ -82,7 +82,7 @@ public struct DesignDocExtractor: Sendable {
 
     private func extractHeadings(from markdown: String) -> [String] {
         markdown
-            .split(separator: "\n")
+            .split(whereSeparator: \.isNewline)
             .compactMap { line -> String? in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard trimmed.hasPrefix("## ") else { return nil }
@@ -123,7 +123,7 @@ public struct DesignDocExtractor: Sendable {
     }
 
     private func extractSection(named heading: String, from markdown: String) -> String? {
-        let lines = markdown.split(separator: "\n", omittingEmptySubsequences: false)
+        let lines = markdown.lines
         var capturing = false
         var captured: [String] = []
 

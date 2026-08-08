@@ -21,7 +21,7 @@ public struct NarrativeResponseParser: Sendable {
         style: NarrativeStyle,
         cardHash: String
     ) throws -> NarrativeResult {
-        let lines = response.split(separator: "\n", omittingEmptySubsequences: false)
+        let lines = response.lines
 
         var title = "\(projectName) — Portfolio"
         var summary = ""

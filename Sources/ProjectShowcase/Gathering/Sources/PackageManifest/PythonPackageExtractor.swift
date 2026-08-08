@@ -49,7 +49,7 @@ public struct PythonPackageExtractor: PackageExtractor, Sendable {
 
     private func extractProjectName(from content: String) -> [String] {
         // Look for name = "..." in [project] section
-        let lines = content.components(separatedBy: .newlines)
+        let lines = content.lines
         var inProjectSection = false
 
         for line in lines {
@@ -70,7 +70,7 @@ public struct PythonPackageExtractor: PackageExtractor, Sendable {
     }
 
     private func extractRequiresPython(from content: String) -> String? {
-        let lines = content.components(separatedBy: .newlines)
+        let lines = content.lines
         var inProjectSection = false
 
         for line in lines {
@@ -92,7 +92,7 @@ public struct PythonPackageExtractor: PackageExtractor, Sendable {
 
     private func extractDependencies(from content: String) -> [String] {
         var deps: [String] = []
-        let lines = content.components(separatedBy: .newlines)
+        let lines = content.lines
         var inDepsSection = false
 
         for line in lines {
