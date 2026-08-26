@@ -39,7 +39,7 @@ public struct GitExtractor: Sendable {
         echo "===END==="
         """
 
-        let output = try await runShell(script, in: projectPath.path)
+        let output = try runShell(script, in: projectPath.path)
         return parseGitOutput(output)
     }
 
@@ -121,30 +121,18 @@ public struct GitExtractor: Sendable {
         return sections
     }
 
-    private func runShell(_ script: String, in directory: String) async throws -> String {
-        let outputFile = FileManager.default.temporaryDirectory
-            .appendingPathComponent("showcase-git-\(UUID().uuidString).txt")
-        let fullScript = "(\(script)) > '\(outputFile.path)' 2>/dev/null"
-
-        // SAFETY: Executable hardcoded to /bin/zsh, script is internal string literal not user input
-        let process = Process()
-        let shellPath = "/bin/zsh"
-        process.executableURL = URL(fileURLWithPath: shellPath)
-        process.arguments = ["-c", fullScript]
-        process.currentDirectoryURL = URL(fileURLWithPath: directory).standardized
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
-        try process.run()
-        process.waitUntilExit()
-
-        defer { try? FileManager.default.removeItem(at: outputFile) } // silent: git data extraction
-
-        // SAFETY: outputFile is from FileManager.temporaryDirectory, no user-controlled path components
-        guard FileManager.default.fileExists(atPath: outputFile.path) else {
-            return ""
-        }
-        return try String(contentsOf: outputFile, encoding: .utf8)
+    /// Runs a read-only git script and returns its standard output.
+    ///
+    /// The script is a literal assembled at compile time — no caller value reaches it — and the
+    /// spawn is bounded by ``ProcessRunner``, which also captures the output the script used to
+    /// redirect to a scratch file itself.
+    private func runShell(_ script: String, in directory: String) throws -> String {
+        // SAFETY: /bin/zsh with a compile-time literal script; no interpolation reaches the shell.
+        let result = try ProcessRunner.run(
+            "/bin/zsh",
+            arguments: ["-c", script],
+            workingDirectory: URL(fileURLWithPath: directory)
+        )
+        return result.standardOutput
     }
 }

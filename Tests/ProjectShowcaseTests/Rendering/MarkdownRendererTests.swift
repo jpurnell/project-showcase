@@ -73,9 +73,7 @@ struct MarkdownRendererTests {
 
     @Test("Renders to file in output directory")
     func rendersToFile() throws {
-        let outputDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("showcase-render-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+        let outputDir = try makeFixtureDirectory(prefix: "showcase-render")
 
         let renderer = MarkdownRenderer()
         let filePath = try renderer.renderToFile(
@@ -83,8 +81,11 @@ struct MarkdownRendererTests {
             outputDirectory: outputDir
         )
 
-        #expect(FileManager.default.fileExists(atPath: filePath.path))
-        #expect(filePath.pathExtension == "md")
+        let renderedFile = filePath.standardizedFileURL
+        #expect(renderedFile.path.hasPrefix(outputDir.path),
+                "Rendered file should stay inside the output directory")
+        #expect((try? renderedFile.checkResourceIsReachable()) == true)
+        #expect(renderedFile.pathExtension == "md")
 
         let content = try String(contentsOf: filePath, encoding: .utf8)
         #expect(content.contains("BusinessMath"))
@@ -106,7 +107,7 @@ struct MarkdownRendererTests {
         let output = try renderer.render(narrative: Self.sampleNarrative)
 
         // Ignite parses "yyyy-MM-dd HH:mm", not ISO8601 with T and Z
-        let lines = output.components(separatedBy: "\n")
+        let lines = output.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         let dateLine = try #require(
             lines.first(where: { $0.hasPrefix("date:") }),
             "Should have a date: line"
@@ -122,7 +123,7 @@ struct MarkdownRendererTests {
         let renderer = MarkdownRenderer()
         let output = try renderer.render(narrative: Self.sampleNarrative)
 
-        let lines = output.components(separatedBy: "\n")
+        let lines = output.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         let tagsLine = try #require(
             lines.first(where: { $0.hasPrefix("tags:") }),
             "Should have a tags: line"
@@ -154,7 +155,7 @@ struct MarkdownRendererTests {
         let renderer = MarkdownRenderer()
         let output = try renderer.render(narrative: Self.sampleNarrative)
 
-        let lines = output.components(separatedBy: "\n")
+        let lines = output.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         let titleLine = try #require(
             lines.first(where: { $0.hasPrefix("title:") }),
             "Should have a title: line"

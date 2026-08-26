@@ -20,6 +20,7 @@ let package = Package(
     targets: [
         .target(
             name: "ProjectShowcase",
+            exclude: ["ProjectShowcase.docc"],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]

@@ -257,6 +257,8 @@ Sources/
       StatsCardGenerator.swift        # Key metrics SVG
       CommitTimelineGenerator.swift   # Commit activity SVG
       ReleaseTimelineGenerator.swift  # Release history SVG
+    Support/
+      ProcessRunner.swift             # The one place a subprocess is spawned
 
   ShowcaseCLI/                # Executable target (swift-argument-parser)
     ShowcaseCLI.swift                 # Entry point, subcommand registration
@@ -268,12 +270,13 @@ Sources/
     InfographicsCommand.swift
 
 Tests/
-  ProjectShowcaseTests/       # 119 tests across 16 suites
+  ProjectShowcaseTests/       # 128 tests across 17 suites
     Gathering/                # Extractor unit tests
     Models/                   # Serialization round-trip tests
     Narration/                # Prompt construction, response parsing
     Rendering/                # Markdown output, SVG generation
     Integration/              # End-to-end smoke tests
+    Support/                  # ProcessRunner tests, git fixture helpers
 ```
 
 ## Data Flow

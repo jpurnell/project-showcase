@@ -6,6 +6,5 @@ development-guidelines/
 xcuserdata/
 DerivedData/
 *.backup-*
-.quality-gate.yml
 /.claude/skills/
 /development-guidelines.pre-v2/

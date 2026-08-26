@@ -9,52 +9,40 @@ import Testing
 import Foundation
 @testable import ProjectShowcase
 
-private func runGit(_ cmd: String, in directory: String) throws {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-    process.arguments = ["-c", cmd]
-    process.currentDirectoryURL = URL(fileURLWithPath: directory)
-    process.environment = [
-        "PATH": "/usr/bin:/bin:/usr/local/bin",
-        "HOME": NSHomeDirectory(),
-        "GIT_AUTHOR_NAME": "Test",
-        "GIT_AUTHOR_EMAIL": "test@test.com",
-        "GIT_COMMITTER_NAME": "Test",
-        "GIT_COMMITTER_EMAIL": "test@test.com"
-    ]
-    try process.run()
-    process.waitUntilExit()
-    guard process.terminationStatus == 0 else {
-        throw ShowcaseError.extractionFailed(source: "git", message: "Command failed: \(cmd)")
-    }
-}
+private func createFixtureRepo() throws -> URL {
+    let directory = try makeFixtureDirectory(prefix: "showcase-test")
+    try runGit(["init"], in: directory)
 
-private func createFixtureRepo() throws -> String {
-    let path = FileManager.default.temporaryDirectory
-        .appendingPathComponent("showcase-test-\(UUID().uuidString)").path
-    try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
-    try runGit("git init", in: path)
-    try runGit("echo 'hello' > file.txt && git add . && git commit -m 'Initial commit'", in: path)
-    try runGit("echo 'world' >> file.txt && git add . && git commit -m 'Second commit'", in: path)
-    try runGit("git tag v1.0.0", in: path)
-    try runGit("echo 'third' >> file.txt && git add . && git commit -m 'Third commit'", in: path)
-    try runGit("git tag v1.1.0", in: path)
-    return path
+    try writeFixtureFile("hello\n", named: "file.txt", in: directory)
+    try runGit(["add", "."], in: directory)
+    try runGit(["commit", "-m", "Initial commit"], in: directory)
+
+    try writeFixtureFile("hello\nworld\n", named: "file.txt", in: directory)
+    try runGit(["add", "."], in: directory)
+    try runGit(["commit", "-m", "Second commit"], in: directory)
+    try runGit(["tag", "v1.0.0"], in: directory)
+
+    try writeFixtureFile("hello\nworld\nthird\n", named: "file.txt", in: directory)
+    try runGit(["add", "."], in: directory)
+    try runGit(["commit", "-m", "Third commit"], in: directory)
+    try runGit(["tag", "v1.1.0"], in: directory)
+
+    return directory
 }
 
 @Suite("GitExtractor Tests")
 struct GitExtractorTests {
 
-    let fixtureRepoPath: String
+    let fixtureRepo: URL
 
     init() throws {
-        self.fixtureRepoPath = try createFixtureRepo()
+        self.fixtureRepo = try createFixtureRepo()
     }
 
     @Test("Extracts correct commit count from fixture repo")
     func commitCount() async throws {
         let extractor = GitExtractor()
-        let facts = try await extractor.extract(from: URL(fileURLWithPath: fixtureRepoPath))
+        let facts = try await extractor.extract(from: fixtureRepo)
 
         #expect(facts.commitCount == 3)
     }
@@ -62,7 +50,7 @@ struct GitExtractorTests {
     @Test("Extracts release tags as Release objects")
     func releaseTags() async throws {
         let extractor = GitExtractor()
-        let facts = try await extractor.extract(from: URL(fileURLWithPath: fixtureRepoPath))
+        let facts = try await extractor.extract(from: fixtureRepo)
 
         #expect(facts.releaseHistory.count == 2)
         let tags = facts.releaseHistory.map(\.tag)
@@ -73,7 +61,7 @@ struct GitExtractorTests {
     @Test("Extracts contributor count")
     func contributorCount() async throws {
         let extractor = GitExtractor()
-        let facts = try await extractor.extract(from: URL(fileURLWithPath: fixtureRepoPath))
+        let facts = try await extractor.extract(from: fixtureRepo)
 
         #expect(facts.contributorCount == 1)
     }
@@ -81,7 +69,7 @@ struct GitExtractorTests {
     @Test("Extracts branch count")
     func branchCount() async throws {
         let extractor = GitExtractor()
-        let facts = try await extractor.extract(from: URL(fileURLWithPath: fixtureRepoPath))
+        let facts = try await extractor.extract(from: fixtureRepo)
 
         #expect(facts.branchCount >= 1)
     }
@@ -89,7 +77,7 @@ struct GitExtractorTests {
     @Test("Extracts first and latest commit dates")
     func commitDates() async throws {
         let extractor = GitExtractor()
-        let facts = try await extractor.extract(from: URL(fileURLWithPath: fixtureRepoPath))
+        let facts = try await extractor.extract(from: fixtureRepo)
 
         let first = try #require(facts.firstCommitDate)
         let latest = try #require(facts.latestCommitDate)
@@ -99,12 +87,7 @@ struct GitExtractorTests {
     @Test("Throws for non-git directory")
     func nonGitDirectory() async throws {
         let extractor = GitExtractor()
-        let nonGitPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("not-a-repo-\(UUID().uuidString)")
-
-        try FileManager.default.createDirectory(
-            at: nonGitPath, withIntermediateDirectories: true
-        )
+        let nonGitPath = try makeFixtureDirectory(prefix: "not-a-repo")
 
         var didThrow = false
         do {

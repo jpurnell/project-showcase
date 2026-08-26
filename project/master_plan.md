@@ -28,7 +28,7 @@ Extract structured facts from developer projects — git history, package manife
 
 ### Technology Stack
 - **Language:** Swift 5.9+ (macOS 13+), strict concurrency enabled
-- **Frameworks:** swift-argument-parser (CLI), Foundation (networking, file I/O, Process)
+- **Frameworks:** swift-argument-parser (CLI), Foundation (networking, file I/O, Process — spawns confined to `ProcessRunner`)
 - **Build System:** Swift Package Manager
 - **Testing:** Swift Testing framework (@Test, #expect)
 - **API:** Anthropic Claude REST API via Foundation URLSession (no SDK dependency)
@@ -67,12 +67,15 @@ ProjectShowcase/
 │   │   │   ├── PortfolioPromptBuilder.swift
 │   │   │   ├── NarrativeGenerator.swift
 │   │   │   └── NarrativeResponseParser.swift
-│   │   └── Rendering/
-│   │       ├── MarkdownRenderer.swift
-│   │       ├── InfographicGenerator.swift (protocol)
-│   │       ├── StatsCardGenerator.swift
-│   │       ├── CommitTimelineGenerator.swift
-│   │       └── ReleaseTimelineGenerator.swift
+│   │   ├── Rendering/
+│   │   │   ├── MarkdownRenderer.swift
+│   │   │   ├── InfographicGenerator.swift (protocol)
+│   │   │   ├── StatsCardGenerator.swift
+│   │   │   ├── CommitTimelineGenerator.swift
+│   │   │   └── ReleaseTimelineGenerator.swift
+│   │   ├── Support/
+│   │   │   └── ProcessRunner.swift    # the package's only subprocess spawn site
+│   │   └── ProjectShowcase.docc/      # DocC catalogue (excluded from the target's sources)
 │   └── ShowcaseCLI/              # Executable target
 │       ├── ShowcaseCLI.swift
 │       ├── GatherCommand.swift
@@ -82,7 +85,7 @@ ProjectShowcase/
 │       ├── PortfolioCommand.swift
 │       └── InfographicsCommand.swift
 ├── Tests/
-│   └── ProjectShowcaseTests/     # 119 tests across 16 suites
+│   └── ProjectShowcaseTests/     # 128 tests across 17 suites
 └── Package.swift
 ```
 
@@ -105,6 +108,8 @@ ProjectShowcase/
 | `InfographicGenerator` | Protocol for SVG generators (stats card, commit timeline, release timeline) |
 | `ShowcaseError` | Single error enum for all failure modes across the pipeline |
 | `PackageExtractor` | Protocol for language-specific manifest parsers |
+| `ProcessRunner` | The package's only subprocess spawn site: bounds each run with a watchdog and captures output through files |
+| `ProcessResult` | A finished child's exit status and captured `stdout` / `stderr` |
 
 ---
 
@@ -125,6 +130,7 @@ ProjectShowcase/
 - [x] SVG infographic generation (stats card, commit timeline, release timeline)
 - [x] Default subcommand (`refresh`) for streamlined CLI usage
 - [x] MASTER_PLAN.md grounding to prevent narrative hallucination
+- [x] Bounded subprocess kernel (`ProcessRunner`) — every spawn in the package goes through it
 - [ ] GenericExtractor (fallback file counting, language detection for non-manifest projects)
 - [ ] MCP server wrapper
 - [ ] Narrative caching (keyed by ProjectCard hash)
@@ -133,7 +139,7 @@ ProjectShowcase/
 ### Known Issues
 - Claude Code insights schema is undocumented and may change without notice — extraction is optional and degrades gracefully
 - Narrative quality varies by project complexity; sparse projects (few commits, no tests) produce generic output
-- `git shortlog` requires `process.standardInput = FileHandle.nullDevice` to avoid hanging when stdin is a TTY
+- `git shortlog` hangs when stdin is a TTY; `ProcessRunner` sets `FileHandle.nullDevice` for every child, so this is now handled in one place rather than per call site
 
 ### Current Priorities
 1. Fill in MASTER_PLAN.md descriptions for remaining projects (19 of 30 still lack authoritative descriptions)
@@ -160,7 +166,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ### Code Quality
 - All code follows `coding_rules.md`
-- 119 tests across 16 suites covering all extractors, models, narration, rendering, and integration
+- 128 tests across 17 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
 - Documentation for all public APIs
 - No warnings in build output
 - Strict concurrency enabled (StrictConcurrency upcoming feature flag)
@@ -186,7 +192,8 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 | `ShowcaseError` | `.extractionFailed(source:, message:)` | An extractor encounters an unrecoverable error | Gathering |
 | `ShowcaseError` | `.narrativeGenerationFailed(message:)` | Claude API call fails or returns unparseable response | Narration |
 | `ShowcaseError` | `.renderingFailed(message:)` | File write or template rendering fails | Rendering |
-| `ShowcaseError` | `.invalidConfiguration(message:)` | Missing API key, invalid audience/style, bad file path | CLI |
+| `ShowcaseError` | `.invalidConfiguration(message:)` | Missing API key, invalid audience/style, bad file path, non-positive process timeout | CLI |
+| `ShowcaseError` | `.processTimedOut(executable:, seconds:)` | A child process outlives the deadline `ProcessRunner` gave it | Support |
 
 ### Error Design Principles
 
@@ -206,7 +213,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 - [x] SVG infographic generation (3 generators)
 - [x] Cross-project portfolio overview
 - [x] MASTER_PLAN.md grounding for narrative accuracy
-- [x] 119 tests, CI-ready
+- [x] 128 tests, CI-ready
 
 ### Phase 2: Hardening
 - [ ] GenericExtractor for non-manifest projects (file counting, language detection)
@@ -227,4 +234,6 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ---
 
-**Last Updated:** 2026-05-12
+**Last Updated:** 2026-08-25 — reconciled test counts (119 → 128), recorded the `ProcessRunner`
+subprocess kernel in Current Status and the Error Registry, and updated the `git shortlog` known
+issue now that stdin handling lives in one place.

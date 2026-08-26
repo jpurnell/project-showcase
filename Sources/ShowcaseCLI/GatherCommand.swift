@@ -55,32 +55,18 @@ struct GatherCommand: AsyncParsableCommand {
         }
     }
 
+    /// How long a project's test suite may run before the spawn is torn down.
+    private static let testSuiteTimeout: Duration = .seconds(900)
+
     private func runTestSuite(at projectPath: URL) async throws -> String {
-        // SAFETY: Executable is hardcoded to /usr/bin/env, arguments validated against shell metacharacters below
-        let process = Process()
-        let pipe = Pipe()
-
-        let arguments = ["swift", "test"]
-        let shellMetacharacters = CharacterSet(charactersIn: ";|&$`\"'\\<>(){}!")
-        for arg in arguments {
-            guard arg.rangeOfCharacter(from: shellMetacharacters) == nil else {
-                throw ShowcaseError.invalidConfiguration(
-                    message: "Argument contains shell metacharacters: \(arg)"
-                )
-            }
-        }
-
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = arguments
-        process.currentDirectoryURL = projectPath
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        return String(data: data, encoding: .utf8) ?? ""
+        // The metacharacter screen that used to guard this call is gone with the shell it guarded:
+        // ProcessRunner passes each argument as its own argv entry, which nothing parses.
+        let result = try ProcessRunner.run(
+            "/usr/bin/env",
+            arguments: ["swift", "test"],
+            workingDirectory: projectPath,
+            timeout: Self.testSuiteTimeout
+        )
+        return result.standardOutput + result.standardError
     }
 }

@@ -9,29 +9,9 @@ import Testing
 import Foundation
 @testable import ProjectShowcase
 
-private func runShell(_ cmd: String, in directory: String) throws {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-    process.arguments = ["-c", cmd]
-    process.currentDirectoryURL = URL(fileURLWithPath: directory)
-    process.environment = [
-        "PATH": "/usr/bin:/bin:/usr/local/bin",
-        "HOME": NSHomeDirectory(),
-        "GIT_AUTHOR_NAME": "Test",
-        "GIT_AUTHOR_EMAIL": "test@test.com",
-        "GIT_COMMITTER_NAME": "Test",
-        "GIT_COMMITTER_EMAIL": "test@test.com"
-    ]
-    try process.run()
-    process.waitUntilExit()
-}
-
 private func createFullFixture() throws -> URL {
-    let dir = FileManager.default.temporaryDirectory
-        .appendingPathComponent("showcase-full-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-
-    try runShell("git init", in: dir.path)
+    let dir = try makeFixtureDirectory(prefix: "showcase-full")
+    try runGit(["init"], in: dir)
 
     let packageSwift = """
     // swift-tools-version: 5.9
@@ -45,18 +25,12 @@ private func createFullFixture() throws -> URL {
         targets: [.target(name: "TestProject")]
     )
     """
-    try packageSwift.write(
-        to: dir.appendingPathComponent("Package.swift"),
-        atomically: true, encoding: .utf8
-    )
+    try writeFixtureFile(packageSwift, named: "Package.swift", in: dir)
+    try writeFixtureFile("# TestProject\n\nA test project.", named: "CLAUDE.md", in: dir)
 
-    try "# TestProject\n\nA test project.".write(
-        to: dir.appendingPathComponent("CLAUDE.md"),
-        atomically: true, encoding: .utf8
-    )
-
-    try runShell("git add . && git commit -m 'Initial commit'", in: dir.path)
-    try runShell("git tag v1.0.0", in: dir.path)
+    try runGit(["add", "."], in: dir)
+    try runGit(["commit", "-m", "Initial commit"], in: dir)
+    try runGit(["tag", "v1.0.0"], in: dir)
 
     return dir
 }
@@ -81,15 +55,11 @@ struct FactGathererTests {
 
     @Test("Uses directory name as project name when no manifest")
     func usesDirectoryName() async throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("my-cool-project-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try runShell("git init", in: dir.path)
-        try "hello".write(
-            to: dir.appendingPathComponent("file.txt"),
-            atomically: true, encoding: .utf8
-        )
-        try runShell("git add . && git commit -m 'init'", in: dir.path)
+        let dir = try makeFixtureDirectory(prefix: "my-cool-project")
+        try runGit(["init"], in: dir)
+        try writeFixtureFile("hello", named: "file.txt", in: dir)
+        try runGit(["add", "."], in: dir)
+        try runGit(["commit", "-m", "init"], in: dir)
 
         let gatherer = FactGatherer()
         let card = try await gatherer.gather(from: dir)
@@ -100,9 +70,7 @@ struct FactGathererTests {
 
     @Test("Throws for non-git directory")
     func throwsForNonGit() async throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("no-git-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dir = try makeFixtureDirectory(prefix: "no-git")
 
         let gatherer = FactGatherer()
         var didThrow = false

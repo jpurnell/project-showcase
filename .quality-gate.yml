@@ -1,0 +1,16 @@
+# Repo-level gate configuration. Machine-specific values do not belong here: the corpus path
+# below is relative to the project root, and CI overrides it with --telemetry-corpus-path.
+consistency:
+  corpusPath: ../org-judgement-corpus
+  projectID: project-showcase
+  consistencyThreshold: 0.7
+  defaultRiskTier: 2
+
+# v2 layout: the master plan is project-owned, not framework content.
+status:
+  guidelinesPath: "."
+  masterPlanPath: project/master_plan.md
+
+# One file owns every subprocess spawn; bounded-io audits that containment.
+boundedIO:
+  kernelPath: Sources/ProjectShowcase/Support/ProcessRunner.swift

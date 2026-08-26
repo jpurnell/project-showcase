@@ -14,4 +14,5 @@ public enum ShowcaseError: Error, Sendable {
     case narrativeGenerationFailed(message: String)
     case renderingFailed(message: String) // LIVE: thrown by rendering pipeline
     case invalidConfiguration(message: String)
+    case processTimedOut(executable: String, seconds: Double)
 }

@@ -7,12 +7,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `ProcessRunner`: the single subprocess spawn site for the package, bounding every run with a
+  watchdog and capturing output through files rather than pipes
+- `ShowcaseError.processTimedOut(executable:seconds:)` for a child that outlives its deadline
+- DocC catalogue for the `ProjectShowcase` library target
 - Daily quality gate with corpus telemetry integration
 - Default subcommand (`refresh`) for streamlined CLI usage
 - MASTER_PLAN.md extraction for narrative grounding with project descriptions
 - Ignite-compatible YAML frontmatter output
 
+### Changed
+- Git extraction, `--run-tests`, and the test fixtures all spawn through `ProcessRunner`; the
+  fixtures no longer build shell command strings, passing each argument as its own `argv` entry
+- Test fixture helpers consolidated in `Tests/ProjectShowcaseTests/Support/GitFixture.swift`
+- `.quality-gate.yml` is tracked rather than gitignored, so the bounded-io kernel declaration
+  reaches CI; its corpus path is now relative to the project root
+
 ### Fixed
+- Line splitting in renderer tests now survives CRLF (`split(whereSeparator: \.isNewline)`
+  instead of `components(separatedBy: "\n")`, which leaves the `\r` behind)
 - Frontmatter output compatibility with Ignite's YAML parser
 
 ## [0.1.0] - 2026-05-12
