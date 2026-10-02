@@ -225,3 +225,33 @@ struct NarrativeGeneratorTests {
         #expect(result.body.contains("## Problem"))
     }
 }
+
+/// Which hosts receive the API key.
+///
+/// The check was `host.hasSuffix("anthropic.com")`, which also admits `evilanthropic.com` — and
+/// the request carries the key in `x-api-key`. The base URL comes from configuration.
+@Suite("Narrative endpoint allowlist")
+struct NarrativeEndpointAllowlistTests {
+
+    @Test("Anthropic's host and its subdomains are allowed over HTTPS", arguments: [
+        "https://api.anthropic.com/v1/messages",
+        "https://anthropic.com/v1/messages",
+        "http://localhost:8080/v1/messages",
+    ])
+    func allowed(url: String) throws {
+        // SECURITY: test fixtures parsed to check the allowlist; no request is ever made here
+        #expect(NarrativeGenerator.isAllowedEndpoint(try #require(URL(string: url))), "\(url)")
+    }
+
+    @Test("A lookalike host, plain HTTP, or another host is refused", arguments: [
+        "https://evilanthropic.com/v1/messages",
+        "https://api.anthropic.com.evil.example/v1/messages",
+        // SECURITY: a plain-HTTP fixture that must be refused; it is parsed, never fetched
+        "http://api.anthropic.com/v1/messages",
+        "https://example.com/v1/messages",
+    ])
+    func refused(url: String) throws {
+        // SECURITY: test fixtures parsed to check the allowlist; no request is ever made here
+        #expect(!NarrativeGenerator.isAllowedEndpoint(try #require(URL(string: url))), "\(url)")
+    }
+}

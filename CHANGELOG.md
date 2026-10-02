@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **The API key could be sent to a lookalike host.** The endpoint check was
+  `host.hasSuffix("anthropic.com")`, which admits `evilanthropic.com`, and the request that
+  follows carries the key in `x-api-key`. `NarrativeGenerator.isAllowedEndpoint(_:)` accepts
+  `anthropic.com` or a subdomain matched with its dot, over HTTPS, or `localhost`; tested for a
+  lookalike, a suffix-extended host, plain HTTP and an unrelated host.
+
 ### Added
 - `ProcessRunner`: the single subprocess spawn site for the package, bounding every run with a
   watchdog and capturing output through files rather than pipes

@@ -10,6 +10,21 @@ import Foundation
 /// Generates narrative portfolio entries by calling the Claude API.
 public struct NarrativeGenerator: Sendable {
 
+    /// Whether `url` may receive the API key: Anthropic's own host or a subdomain of it over HTTPS,
+    /// or `localhost` for a local proxy.
+    ///
+    /// The check was `host.hasSuffix("anthropic.com")`, which admits `evilanthropic.com`; the
+    /// request that follows carries the key in `x-api-key`. A subdomain is matched with its dot.
+    ///
+    /// - Parameter url: The endpoint built from the configured base URL.
+    /// - Returns: `true` only for the hosts above.
+    static func isAllowedEndpoint(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased(), let scheme = url.scheme?.lowercased() else { return false }
+        if host == "localhost" { return scheme == "http" || scheme == "https" }
+        guard scheme == "https" else { return false }
+        return host == "anthropic.com" || host.hasSuffix(".anthropic.com")
+    }
+
     private let apiKey: String
     private let model: String
     private let baseURL: String
@@ -76,10 +91,8 @@ public struct NarrativeGenerator: Sendable {
         ]
 
         let urlString = "\(baseURL)/v1/messages"
-        // SAFETY: URL host validated against allowlist (anthropic.com, localhost) before any request
-        guard let url = URL(string: urlString),
-              let host = url.host,
-              host.hasSuffix("anthropic.com") || host == "localhost" else {
+        // SECURITY: the host is checked by isAllowedEndpoint below before the API key is attached
+        guard let url = URL(string: urlString), Self.isAllowedEndpoint(url) else {
             throw ShowcaseError.narrativeGenerationFailed(
                 message: "Invalid or disallowed API URL: \(urlString)"
             )
