@@ -91,7 +91,6 @@ public struct NarrativeGenerator: Sendable {
         ]
 
         let urlString = "\(baseURL)/v1/messages"
-        // SECURITY: the host is checked by isAllowedEndpoint below before the API key is attached
         guard let url = URL(string: urlString), Self.isAllowedEndpoint(url) else {
             throw ShowcaseError.narrativeGenerationFailed(
                 message: "Invalid or disallowed API URL: \(urlString)"

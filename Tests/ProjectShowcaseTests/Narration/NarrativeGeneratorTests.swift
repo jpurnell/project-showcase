@@ -239,7 +239,6 @@ struct NarrativeEndpointAllowlistTests {
         "http://localhost:8080/v1/messages",
     ])
     func allowed(url: String) throws {
-        // SECURITY: test fixtures parsed to check the allowlist; no request is ever made here
         #expect(NarrativeGenerator.isAllowedEndpoint(try #require(URL(string: url))), "\(url)")
     }
 
@@ -251,7 +250,6 @@ struct NarrativeEndpointAllowlistTests {
         "https://example.com/v1/messages",
     ])
     func refused(url: String) throws {
-        // SECURITY: test fixtures parsed to check the allowlist; no request is ever made here
         #expect(!NarrativeGenerator.isAllowedEndpoint(try #require(URL(string: url))), "\(url)")
     }
 }

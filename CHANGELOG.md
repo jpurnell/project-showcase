@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Test fixture helpers consolidated in `Tests/ProjectShowcaseTests/Support/GitFixture.swift`
 - `.quality-gate.yml` is tracked rather than gitignored, so the bounded-io kernel declaration
   reaches CI; its corpus path is now relative to the project root
+- Removed three `// SECURITY:` acknowledgements that no longer answer a finding now that
+  `security.ssrf` reports requests rather than parses; one remains, on the plain-HTTP fixture
 
 ### Fixed
 - Line splitting in renderer tests now survives CRLF (`split(whereSeparator: \.isNewline)`
