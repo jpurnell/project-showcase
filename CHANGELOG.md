@@ -12,6 +12,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   follows carries the key in `x-api-key`. `NarrativeGenerator.isAllowedEndpoint(_:)` accepts
   `anthropic.com` or a subdomain matched with its dot, over HTTPS, or `localhost`; tested for a
   lookalike, a suffix-extended host, plain HTTP and an unrelated host.
+- **The commit timeline depended on where it was generated.** `CommitTimelineGenerator` counted
+  months in a Gregorian calendar that inherited the machine's time zone and labelled them in the
+  machine's locale, so a first commit at 02:00 UTC on 1 November added an October bar anywhere
+  west of Greenwich. It now takes `timeZone` and `locale` — `CommitTimelineGenerator(timeZone:locale:)`,
+  defaulting to UTC and `en_US_POSIX` — and `CommitTimelineGenerator()` still compiles. Output
+  changes only for a history that crosses a month boundary between UTC and the local zone, or
+  on a machine whose locale abbreviates months differently.
+- The DocC catalogue was excluded from the `ProjectShowcase` target, so DocC received no
+  articles and `doc-lint` passed without reading it. It is declared as a resource instead.
+- The infographic protocol test asserted `generator is any InfographicGenerator`, which the
+  compiler had already decided. It now checks what each generator draws through the protocol.
 
 ### Added
 - `ProcessRunner`: the single subprocess spawn site for the package, bounding every run with a
@@ -29,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Test fixture helpers consolidated in `Tests/ProjectShowcaseTests/Support/GitFixture.swift`
 - `.quality-gate.yml` is tracked rather than gitignored, so the bounded-io kernel declaration
   reaches CI; its corpus path is now relative to the project root
+- Removed three `// SECURITY:` acknowledgements that no longer answer a finding now that
+  `security.ssrf` reports requests rather than parses; one remains, on the plain-HTTP fixture
 
 ### Fixed
 - Line splitting in renderer tests now survives CRLF (`split(whereSeparator: \.isNewline)`
