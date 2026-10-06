@@ -10,8 +10,31 @@ import Foundation
 /// Generates a horizontal bar chart SVG showing commit activity over time.
 public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
 
-    /// Creates a new CommitTimelineGenerator instance.
-    public init() {}
+    /// The time zone a commit's month is read in.
+    private let timeZone: TimeZone
+
+    /// The locale the month labels are written in.
+    private let locale: Locale
+
+    /// Creates a generator that counts and labels months in a stated time zone and locale.
+    ///
+    /// Neither is taken from the machine. A commit made at 02:00 UTC on the first of a month
+    /// belongs to the previous month anywhere west of Greenwich, so a generator that asked the
+    /// system would draw a different chart for the same repository depending on where it ran —
+    /// and the chart is a file that gets committed.
+    ///
+    /// - Parameters:
+    ///   - timeZone: The zone month boundaries fall in. UTC by default, matching the dates
+    ///     ``MarkdownRenderer`` writes.
+    ///   - locale: The locale of the abbreviated month names. `en_US_POSIX` by default, whose
+    ///     names do not vary with the system's settings.
+    public init(
+        timeZone: TimeZone = .gmt,
+        locale: Locale = Locale(identifier: "en_US_POSIX")
+    ) {
+        self.timeZone = timeZone
+        self.locale = locale
+    }
 
     /// Generates a commit activity timeline SVG from the given project card.
     public func generate(from card: ProjectCard) throws -> String {
@@ -46,7 +69,9 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
             return svg
         }
 
-        let calendar = Calendar(identifier: .gregorian)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        calendar.locale = locale
         let months = monthsBetween(start: firstDate, end: latestDate, calendar: calendar)
 
         guard months.count > 0 else {
@@ -65,7 +90,12 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
         let totalBarSpace = chartWidth - (barSpacing * (months.count - 1))
         let barWidth = max(totalBarSpace / months.count, 4)
 
+        // The same calendar, zone and locale the months were counted in: a label formatted in
+        // another zone would name the month before the one its bar stands for.
         let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = timeZone
+        formatter.locale = locale
         formatter.dateFormat = "MMM"
 
         for (index, month) in months.enumerated() {

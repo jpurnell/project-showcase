@@ -20,7 +20,10 @@ let package = Package(
     targets: [
         .target(
             name: "ProjectShowcase",
-            exclude: ["ProjectShowcase.docc"],
+            // Declared, not excluded. swift-docc-plugin finds a catalogue through the target's
+            // `sourceFiles`, which `exclude:` removes it from — so excluding handed DocC no
+            // articles, and doc-lint passed over a catalogue it never opened.
+            resources: [.copy("ProjectShowcase.docc")],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]

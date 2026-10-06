@@ -85,15 +85,27 @@ struct InfographicTests {
 
     // MARK: - Protocol Conformance
 
-    @Test("All generators conform to InfographicGenerator protocol")
-    func protocolConformance() {
+    /// Conformance is the compiler's to check, and it has by the time this runs: the three
+    /// bindings below would not build otherwise. What a test can add is that each generator,
+    /// reached only through the protocol, draws its own chart for the card it was given.
+    @Test("Each generator, called through the protocol, draws its own chart")
+    func protocolConformance() throws {
         let stats: any InfographicGenerator = StatsCardGenerator()
         let timeline: any InfographicGenerator = CommitTimelineGenerator()
         let releases: any InfographicGenerator = ReleaseTimelineGenerator()
 
-        #expect(stats is any InfographicGenerator)
-        #expect(timeline is any InfographicGenerator)
-        #expect(releases is any InfographicGenerator)
+        let statsSVG = try stats.generate(from: Self.sampleCard)
+        let timelineSVG = try timeline.generate(from: Self.sampleCard)
+        let releasesSVG = try releases.generate(from: Self.sampleCard)
+
+        let svgOpening = "<svg xmlns=\"http://www.w3.org/2000/svg\""
+        #expect(statsSVG.hasPrefix(svgOpening))
+        #expect(timelineSVG.hasPrefix(svgOpening))
+        #expect(releasesSVG.hasPrefix(svgOpening))
+
+        #expect(statsSVG.contains(">BusinessMath</text>"))
+        #expect(timelineSVG.contains(">BusinessMath — Commit Activity</text>"))
+        #expect(releasesSVG.contains(">BusinessMath — Releases</text>"))
     }
 
     // MARK: - StatsCardGenerator
@@ -193,6 +205,57 @@ struct InfographicTests {
 
         #expect(svg.contains("width="))
         #expect(svg.contains("height="))
+    }
+
+    // MARK: - CommitTimelineGenerator: where it runs must not change what it draws
+
+    /// One commit at 02:00 UTC on 1 November 2023, the last on 20 November. In UTC that is one
+    /// month. In New York the first commit is still 31 October, so it is two.
+    static let monthBoundaryCard = ProjectCard(
+        projectName: "Boundary",
+        projectPath: "/tmp/boundary",
+        gatheredAt: Date(timeIntervalSince1970: 1_700_438_400),
+        git: GitFacts(
+            commitCount: 8,
+            releaseHistory: [],
+            branchCount: 1,
+            firstCommitDate: Date(timeIntervalSince1970: 1_698_804_000),
+            latestCommitDate: Date(timeIntervalSince1970: 1_700_438_400),
+            contributorCount: 1
+        ),
+        packageManifest: nil,
+        tests: nil,
+        quality: nil,
+        insights: nil,
+        designArtifacts: nil
+    )
+
+    @Test("CommitTimelineGenerator counts months in UTC unless told otherwise")
+    func commitTimelineDefaultsToUTC() throws {
+        let svg = try CommitTimelineGenerator().generate(from: Self.monthBoundaryCard)
+
+        #expect(svg.contains(">Nov</text>"))
+        #expect(!svg.contains(">Oct</text>"))
+        #expect(svg.contains("~8/month (8 total)"))
+    }
+
+    @Test("CommitTimelineGenerator counts months in the time zone it is given")
+    func commitTimelineUsesInjectedTimeZone() throws {
+        let newYork = try #require(TimeZone(identifier: "America/New_York"))
+        let svg = try CommitTimelineGenerator(timeZone: newYork).generate(from: Self.monthBoundaryCard)
+
+        #expect(svg.contains(">Oct</text>"))
+        #expect(svg.contains(">Nov</text>"))
+        #expect(svg.contains("~4/month (8 total)"))
+    }
+
+    @Test("CommitTimelineGenerator labels months in the locale it is given")
+    func commitTimelineUsesInjectedLocale() throws {
+        let generator = CommitTimelineGenerator(locale: Locale(identifier: "fr_FR"))
+        let svg = try generator.generate(from: Self.monthBoundaryCard)
+
+        #expect(svg.contains(">nov.</text>"))
+        #expect(!svg.contains(">Nov</text>"))
     }
 
     // MARK: - ReleaseTimelineGenerator
