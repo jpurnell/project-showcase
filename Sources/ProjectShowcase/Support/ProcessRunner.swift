@@ -71,7 +71,10 @@ public enum ProcessRunner {
     ///   - executablePath: Absolute path to the program to run.
     ///   - arguments: Arguments passed as individual `argv` entries, never parsed by a shell.
     ///   - workingDirectory: Directory to run in. Standardized before use.
-    ///   - environment: The child's full environment, or `nil` to inherit this process's.
+    ///   - environment: The child's full environment. `nil` gives the child an *empty* environment,
+    ///     not this process's: assigning `nil` to `Process.environment` does not inherit, and an
+    ///     empty default also keeps `ANTHROPIC_API_KEY` away from children that do not need it.
+    ///     A caller that needs `HOME` or `PATH` passes them, or `ProcessInfo.processInfo.environment`.
     ///   - timeout: How long the child may run. Must be positive.
     /// - Returns: The child's exit status and captured output.
     /// - Throws: ``ShowcaseError/invalidConfiguration(message:)`` for a non-positive timeout,

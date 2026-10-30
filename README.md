@@ -260,7 +260,23 @@ Three rules keep it from publishing something wrong:
   `project/master_plan.md`, the published page is left as it is and the skip is reported.
 - **An unreadable repo is skipped**, even under `--force`.
 
-**Automating it.** `scripts/sync-site.sh` runs the sync, rebuilds the site, and opens a pull
+### `showcase discover --manifest <path>`
+
+Finds repositories that deserve a page and, with `--add`, appends them to the manifest so the next
+`sync` generates them. Nothing is hand-picked: a repository qualifies only if
+
+- GitHub lists it as **public** under `--owner` (default `jpurnell`), and it is not a fork or archived;
+  a checkout with no GitHub remote is rejected, since nothing says it is public,
+- it has a master plan with a Mission (the same grounding rule `sync` enforces),
+- it has at least `--min-commits` (30) commits and a commit within `--max-age-days` (365).
+
+A remote an existing page already covers is not proposed again, so two checkouts of one repo, or a
+module page and its parent repo, do not become two pages. At most `--max-new` (5) are proposed per
+run, most history first, which bounds API spend and lets a backlog drain over several weeks. Without
+`--add` it only prints. It needs `gh` signed in; if that fails it errors rather than reading an empty
+list as "nothing is public".
+
+**Automating it.** `scripts/sync-site.sh` runs `discover --add`, then the sync, rebuilds the site, and opens a pull
 request on a `showcase/sync-<date>` branch and merges it when the sync was clean (after any page
 failure it leaves the PR open); it never pushes to `main` directly. `deploy/com.jpurnell.showcase-sync.plist`
 runs it Mondays at 06:30. Setup: put `ANTHROPIC_API_KEY=...` in `~/.config/showcase/env` (mode
@@ -310,6 +326,8 @@ Sources/
       SyncState.swift                 # Last-generated commit per slug
       SyncPlanner.swift               # Pure: which pages are stale
       GitHead.swift                   # Reads a repo's HEAD
+      Discovery.swift                 # Which repos deserve a page (pure policy)
+      RepoScanner.swift               # Reads local checkouts
     Support/
       ProcessRunner.swift             # The one place a subprocess is spawned
 
@@ -322,9 +340,10 @@ Sources/
     PortfolioCommand.swift
     InfographicsCommand.swift
     SyncCommand.swift                 # Manifest-driven regeneration
+    DiscoverCommand.swift             # Proposes new public repos for the manifest
 
 Tests/
-  ProjectShowcaseTests/       # 169 tests across 30 suites
+  ProjectShowcaseTests/       # 191 tests across 37 suites
     Gathering/                # Extractor unit tests
     Models/                   # Serialization round-trip tests
     Narration/                # Prompt construction, response parsing
