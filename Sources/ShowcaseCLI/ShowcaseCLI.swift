@@ -13,6 +13,7 @@ struct ShowcaseCLI: AsyncParsableCommand {
             PortfolioCommand.self,
             InfographicsCommand.self,
             SyncCommand.self,
+            DiscoverCommand.self,
         ],
         defaultSubcommand: RefreshCommand.self
     )

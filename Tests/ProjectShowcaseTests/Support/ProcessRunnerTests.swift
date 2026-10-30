@@ -124,3 +124,38 @@ struct ProcessRunnerTests {
         #expect(message.contains("Timeout must be positive"))
     }
 }
+
+@Suite("ProcessRunner Environment Tests")
+struct ProcessRunnerEnvironmentTests {
+
+    /// The variable names printed by `/usr/bin/env`.
+    private func names(in output: String) -> Set<String> {
+        Set(output.lines.compactMap { line -> String? in
+            guard let equals = line.firstIndex(of: "="), equals != line.startIndex else { return nil }
+            let name = line[..<equals]
+            return name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" } ? String(name) : nil
+        })
+    }
+
+    @Test("A child run with no environment given sees none of its parent's, so secrets do not leak")
+    func defaultIsEmpty() throws {
+        let result = try ProcessRunner.run("/usr/bin/env", arguments: [])
+        #expect(names(in: result.standardOutput).isDisjoint(with: ["ANTHROPIC_API_KEY", "HOME", "PATH"]))
+    }
+
+    @Test("Passing the parent's environment gives the child all of it")
+    func explicitInherit() throws {
+        // Single-line values only: a multi-line value would put its later lines in `env`'s output
+        // where they are not variable names. DYLD_* is stripped by the OS for protected binaries.
+        let parent = ProcessInfo.processInfo.environment.filter { !$0.value.contains("\n") && !$0.key.contains("%") && !$0.key.hasPrefix("DYLD_") }
+        let result = try ProcessRunner.run("/usr/bin/env", arguments: [], environment: parent)
+        let missing = Set(parent.keys).subtracting(names(in: result.standardOutput))
+        #expect(missing.isEmpty, "child lost: \(missing.sorted())")
+    }
+
+    @Test("An environment given explicitly is exactly what the child sees")
+    func explicitIsExact() throws {
+        let result = try ProcessRunner.run("/usr/bin/env", arguments: [], environment: ["ONLY": "this"])
+        #expect(names(in: result.standardOutput) == ["ONLY"])
+    }
+}

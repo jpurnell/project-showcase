@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **`ProcessRunner`'s documentation promised that `environment: nil` inherits the parent's
+  environment; it gives the child an empty one.** Assigning `nil` to `Process.environment` does
+  not inherit. `gh` therefore reported "not logged in" (it found neither `HOME` nor the keychain
+  session). The default is kept, since it also keeps `ANTHROPIC_API_KEY` out of children that do
+  not need it; the documentation now says so, a test pins it, and the `gh` call passes its
+  environment explicitly.
 - **Master-plan grounding had stopped working for every migrated project.** `DesignDocExtractor`
   read only `development-guidelines/00_CORE_RULES/00_MASTER_PLAN.md`. The v2 migration moved the
   plan to `project/master_plan.md`, so cards gathered since August carried no description of
@@ -35,6 +41,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   compiler had already decided. It now checks what each generator draws through the protocol.
 
 ### Added
+- **`showcase discover`** proposes new pages without anyone choosing them. A repository
+  qualifies if GitHub lists it as public under the owner (not a fork, not archived), it has a
+  master plan, 30+ commits, and a commit in the last year; remotes an existing page covers are
+  skipped, and at most five are added per run. `--add` appends them to the manifest. The weekly
+  job runs it before `sync`.
 - **`showcase sync`** keeps a site's pages current. It reads a manifest (slug → source repo,
   audience, style, `project:` group, curated tags), compares each repo's `HEAD` with the commit
   the page was last generated from, and regenerates only the pages whose source moved. It

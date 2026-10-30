@@ -82,6 +82,18 @@ public struct SyncManifest: Codable, Sendable, Equatable {
         return manifest
     }
 
+    /// A copy of this manifest with `added` entries after the existing ones.
+    public func appending(_ added: [SyncEntry]) -> SyncManifest {
+        SyncManifest(sourceRoot: sourceRoot, contentDirectory: contentDirectory, entries: entries + added)
+    }
+
+    /// The manifest as pretty-printed JSON, ready to write back to disk.
+    public func encoded() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return try encoder.encode(self)
+    }
+
     /// Resolves an entry's source directory.
     public func sourceURL(for entry: SyncEntry, manifestDirectory: URL) -> URL {
         if entry.path.hasPrefix("/") {
