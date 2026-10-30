@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Master-plan grounding had stopped working for every migrated project.** `DesignDocExtractor`
+  read only `development-guidelines/00_CORE_RULES/00_MASTER_PLAN.md`. The v2 migration moved the
+  plan to `project/master_plan.md`, so cards gathered since August carried no description of
+  the project and the narrative guessed from names — it described IconquerCore, a headless rules
+  engine for a Risk-style game, as an icon library. The extractor now checks
+  `project/master_plan.md`, `project/MASTER_PLAN.md`, `MASTER_PLAN.md` and the legacy path in
+  that order, and accepts `Target Consumers` as well as `Target Users`.
+- **A narrative request could not outlast URLSession's 60 second default.** A deep-dive prompt
+  over a large repository timed out. `NarrativeGenerator.makeRequest(body:)` now builds the
+  request with a 300 second timeout and is where the host allowlist is applied.
 - **The API key could be sent to a lookalike host.** The endpoint check was
   `host.hasSuffix("anthropic.com")`, which admits `evilanthropic.com`, and the request that
   follows carries the key in `x-api-key`. `NarrativeGenerator.isAllowedEndpoint(_:)` accepts
@@ -25,6 +35,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   compiler had already decided. It now checks what each generator draws through the protocol.
 
 ### Added
+- **`showcase sync`** keeps a site's pages current. It reads a manifest (slug → source repo,
+  audience, style, `project:` group, curated tags), compares each repo's `HEAD` with the commit
+  the page was last generated from, and regenerates only the pages whose source moved. It
+  records progress after every page, so a failed run resumes where it stopped; `--dry-run`,
+  `--force` and `--only <slug>` select what runs. It declines to replace a published page with a
+  narrative the card cannot ground (no master-plan description), and skips an unreadable repo
+  even under `--force`.
+- `SyncManifest`, `SyncState`, `SyncPlanner`, `GitHead` and `PortfolioRenderer` in the library;
+  `MarkdownRenderer` accepts a slug, `project:` label and tag list, and `ProjectCard.renamed(to:)`
+  covers pages that describe one module of a larger repository.
+- `scripts/sync-site.sh` and `deploy/com.jpurnell.showcase-sync.plist`: a weekly launchd job that
+  runs the sync, rebuilds the site and opens a pull request on a dated branch. It never pushes
+  to `main`.
 - `ProcessRunner`: the single subprocess spawn site for the package, bounding every run with a
   watchdog and capturing output through files rather than pipes
 - `ShowcaseError.processTimedOut(executable:seconds:)` for a child that outlives its deadline

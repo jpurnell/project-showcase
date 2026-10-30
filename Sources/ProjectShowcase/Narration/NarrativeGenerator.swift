@@ -80,6 +80,30 @@ public struct NarrativeGenerator: Sendable {
         return try await callAPI(systemPrompt: systemPrompt, userPrompt: userPrompt)
     }
 
+    /// How long one narrative request may take. A deep-dive prompt over a large repository
+    /// outruns URLSession's 60 second default.
+    static let requestTimeout: TimeInterval = 300
+
+    /// Builds the API request, refusing any host that is not Anthropic's own.
+    ///
+    /// - Throws: ``ShowcaseError/narrativeGenerationFailed(message:)`` for a disallowed URL.
+    func makeRequest(body: Data) throws -> URLRequest {
+        let urlString = "\(baseURL)/v1/messages"
+        guard let url = URL(string: urlString), Self.isAllowedEndpoint(url) else {
+            throw ShowcaseError.narrativeGenerationFailed(
+                message: "Invalid or disallowed API URL: \(urlString)"
+            )
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = Self.requestTimeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.httpBody = body
+        return request
+    }
+
     private func callAPI(systemPrompt: String, userPrompt: String) async throws -> String {
         let requestBody: [String: Any] = [
             "model": model,
@@ -90,18 +114,7 @@ public struct NarrativeGenerator: Sendable {
             ]
         ]
 
-        let urlString = "\(baseURL)/v1/messages"
-        guard let url = URL(string: urlString), Self.isAllowedEndpoint(url) else {
-            throw ShowcaseError.narrativeGenerationFailed(
-                message: "Invalid or disallowed API URL: \(urlString)"
-            )
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        let request = try makeRequest(body: try JSONSerialization.data(withJSONObject: requestBody))
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

@@ -18,7 +18,7 @@ Each stage is independent. You can gather once and narrate multiple times for di
 
 ## Requirements
 
-- Swift 5.9+ (macOS 13+)
+- Swift 6.2+ (macOS 13+)
 - Git (the `gather` command shells out to `git` for history extraction)
 - `ANTHROPIC_API_KEY` environment variable (required for `narrate`, `refresh`, and `portfolio` commands)
 
@@ -95,6 +95,7 @@ done
 | `refresh` | All-in-one: gather + narrate + render | Yes |
 | `portfolio` | Cross-project overview from multiple cards | Yes |
 | `infographics` | Generate SVG files from a ProjectCard JSON | No |
+| `sync` | Regenerate every page whose source repo has new commits | Yes (unless `--dry-run`) |
 
 ### `showcase gather <project-path>`
 
@@ -220,6 +221,51 @@ Options:
 
 The SVGs are self-contained with no external dependencies -- they can be embedded directly in HTML or markdown.
 
+### `showcase sync --manifest <path>`
+
+Keeps a site's showcase pages current. Where the other commands act on one project, `sync` acts on
+a manifest listing every page, and does nothing for a page whose source has not moved.
+
+```
+Options:
+  --manifest <path>       Sync manifest JSON (required)
+  --state <path>          State file (default: .showcase-state.json beside the manifest)
+  --only <slug>           Only this slug; repeatable
+  --force                 Regenerate selected pages even if their source has not moved
+  --dry-run               Print the plan; no API calls, nothing written
+  --no-portfolio          Do not regenerate portfolio-overview.md
+```
+
+A manifest names each page and what it is generated from:
+
+```json
+{
+  "sourceRoot": "..",
+  "contentDirectory": "Content/showcase",
+  "entries": [
+    { "slug": "iconquercore", "path": "IconquerCore", "group": "iConquer",
+      "tags": ["showcase", "iConquer", "selfReflection"],
+      "audience": "selfReflection", "style": "caseStudy" }
+  ]
+}
+```
+
+`name` overrides the display name when a page covers one module of a larger repo, `group` sets the
+page's `project:` label, and `tags` preserves a hand-curated tag list across regeneration.
+
+Three rules keep it from publishing something wrong:
+
+- **Moved means a different `HEAD`**, not a later date, so a same-day commit still counts.
+- **No master plan, no regeneration.** If the card has no description from the project's own
+  `project/master_plan.md`, the published page is left as it is and the skip is reported.
+- **An unreadable repo is skipped**, even under `--force`.
+
+**Automating it.** `scripts/sync-site.sh` runs the sync, rebuilds the site, and opens a pull
+request on a `showcase/sync-<date>` branch; it never pushes to `main`. `deploy/com.jpurnell.showcase-sync.plist`
+runs it Mondays at 06:30. Setup: put `ANTHROPIC_API_KEY=...` in `~/.config/showcase/env` (mode
+600), copy the plist to `~/Library/LaunchAgents/`, and `launchctl bootstrap gui/$(id -u)` it. Set
+`SHOWCASE_DRY=1` to print the plan without calling the API.
+
 ## Architecture
 
 ```
@@ -253,10 +299,16 @@ Sources/
       NarrativeResponseParser.swift   # API response → NarrativeResult
     Rendering/
       MarkdownRenderer.swift          # NarrativeResult → YAML frontmatter + markdown
+      PortfolioRenderer.swift         # Portfolio overview frontmatter
       InfographicGenerator.swift      # Protocol for SVG generators
       StatsCardGenerator.swift        # Key metrics SVG
       CommitTimelineGenerator.swift   # Commit activity SVG
       ReleaseTimelineGenerator.swift  # Release history SVG
+    Sync/
+      SyncManifest.swift              # Slug → repo, audience, style, group, tags
+      SyncState.swift                 # Last-generated commit per slug
+      SyncPlanner.swift               # Pure: which pages are stale
+      GitHead.swift                   # Reads a repo's HEAD
     Support/
       ProcessRunner.swift             # The one place a subprocess is spawned
 
@@ -268,13 +320,15 @@ Sources/
     RefreshCommand.swift
     PortfolioCommand.swift
     InfographicsCommand.swift
+    SyncCommand.swift                 # Manifest-driven regeneration
 
 Tests/
-  ProjectShowcaseTests/       # 128 tests across 17 suites
+  ProjectShowcaseTests/       # 169 tests across 30 suites
     Gathering/                # Extractor unit tests
     Models/                   # Serialization round-trip tests
     Narration/                # Prompt construction, response parsing
     Rendering/                # Markdown output, SVG generation
+    Sync/                     # Manifest, planner, state, grounding guard
     Integration/              # End-to-end smoke tests
     Support/                  # ProcessRunner tests, git fixture helpers
 ```
@@ -301,7 +355,7 @@ ProjectCard (JSON)
 │   └── toolUsageProfile, sessionTypes
 └── designArtifacts: DesignArtifactFacts?
     ├── designProposalCount, hasClaudeMD, hasDesignFirstWorkflow
-    ├── projectDescription (from MASTER_PLAN.md)
+    ├── projectDescription (from project/master_plan.md)
     └── architectureNotes
 ```
 

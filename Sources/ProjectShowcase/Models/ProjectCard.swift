@@ -50,4 +50,21 @@ public struct ProjectCard: Codable, Sendable {
         self.insights = insights
         self.designArtifacts = designArtifacts
     }
+
+    /// A copy of this card under a different display name.
+    ///
+    /// Used when a page covers part of a repository, so the directory name would mislead.
+    public func renamed(to name: String) -> ProjectCard {
+        ProjectCard(
+            projectName: name,
+            projectPath: projectPath,
+            gatheredAt: gatheredAt,
+            git: git,
+            packageManifest: packageManifest,
+            tests: tests,
+            quality: quality,
+            insights: insights,
+            designArtifacts: designArtifacts
+        )
+    }
 }

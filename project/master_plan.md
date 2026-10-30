@@ -85,7 +85,7 @@ ProjectShowcase/
 │       ├── PortfolioCommand.swift
 │       └── InfographicsCommand.swift
 ├── Tests/
-│   └── ProjectShowcaseTests/     # 128 tests across 17 suites
+│   └── ProjectShowcaseTests/     # 169 tests across 30 suites
 └── Package.swift
 ```
 
@@ -131,18 +131,22 @@ ProjectShowcase/
 - [x] Default subcommand (`refresh`) for streamlined CLI usage
 - [x] MASTER_PLAN.md grounding to prevent narrative hallucination
 - [x] Bounded subprocess kernel (`ProcessRunner`) — every spawn in the package goes through it
+- [x] `showcase sync`: manifest-driven regeneration of only the pages whose source repo moved (2026-10-30). Shipped ahead of the Roadmap's "GitHub Actions integration" idea, as a local launchd job instead, because the source repos are private and hosted macOS is billed 10x
+- [x] Grounding guard: `sync` will not replace a published page with a narrative the card cannot ground
 - [ ] GenericExtractor (fallback file counting, language detection for non-manifest projects)
 - [ ] MCP server wrapper
 - [ ] Narrative caching (keyed by ProjectCard hash)
 - [ ] HTML standalone output
 
 ### Known Issues
+- ~~MASTER_PLAN.md grounding~~ read only the pre-v2 path (`development-guidelines/00_CORE_RULES/00_MASTER_PLAN.md`), so it silently stopped working for every project migrated in August 2026; fixed 2026-10-30. The checklist item above claimed it worked and the tests passed, because the fixtures used the old layout. It was found only because a regenerated page described a game engine as an icon library
+- Five source repos have no usable master plan (`org-judgement-corpus`, `quality-gate-swift`, `quality-gate-types`, `swift-security-rules`, `geo-audit`); `sync` leaves their pages as published until they get one
 - Claude Code insights schema is undocumented and may change without notice — extraction is optional and degrades gracefully
 - Narrative quality varies by project complexity; sparse projects (few commits, no tests) produce generic output
 - `git shortlog` hangs when stdin is a TTY; `ProcessRunner` sets `FileHandle.nullDevice` for every child, so this is now handled in one place rather than per call site
 
 ### Current Priorities
-1. Fill in MASTER_PLAN.md descriptions for remaining projects (19 of 30 still lack authoritative descriptions)
+1. Write master plans for the five repos `sync` skips (see Known Issues), then run `showcase sync --force --only <slug>` for each
 2. GenericExtractor for projects without package manifests
 3. Narrative caching to avoid redundant API calls on re-runs
 
@@ -166,7 +170,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ### Code Quality
 - All code follows `coding_rules.md`
-- 128 tests across 17 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
+- 169 tests across 30 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
 - Documentation for all public APIs
 - No warnings in build output
 - Strict concurrency enabled (StrictConcurrency upcoming feature flag)
@@ -234,6 +238,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ---
 
-**Last Updated:** 2026-08-25 — reconciled test counts (119 → 128), recorded the `ProcessRunner`
-subprocess kernel in Current Status and the Error Registry, and updated the `git shortlog` known
-issue now that stdin handling lives in one place.
+**Last Updated:** 2026-10-30 — reconciled test counts (128 → 169), recorded `showcase sync`, its
+grounding guard and the weekly launchd job in Current Status, and recorded the master-plan path
+bug in Known Issues with the reason it went unseen. The August 25 reconciliation (119 → 128,
+`ProcessRunner`) stands.

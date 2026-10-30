@@ -90,18 +90,33 @@ public struct DesignDocExtractor: Sendable {
             }
     }
 
-    private func extractProjectDescription(from projectPath: URL) -> String? {
-        let masterPlanPath = projectPath
-            .appendingPathComponent("development-guidelines")
-            .appendingPathComponent("00_CORE_RULES")
-            .appendingPathComponent("00_MASTER_PLAN.md")
-            .standardized
+    /// Where a project's master plan may live, most current layout first.
+    ///
+    /// The development-guidelines v2 migration moved the plan from inside the vendored guidelines
+    /// to `project/master_plan.md`. Reading only the old location left every migrated project
+    /// without its own description, and the narrative then guessed what the project does.
+    private static let masterPlanLocations = [
+        "project/master_plan.md",
+        "project/MASTER_PLAN.md",
+        "MASTER_PLAN.md",
+        "development-guidelines/00_CORE_RULES/00_MASTER_PLAN.md"
+    ]
 
-        // SAFETY: masterPlanPath is .standardized, bounded to projectPath
-        guard FileManager.default.fileExists(atPath: masterPlanPath.path),
-              let content = try? String(contentsOf: masterPlanPath, encoding: .utf8) else { // silent: best-effort extraction
-            return nil
+    private func extractProjectDescription(from projectPath: URL) -> String? {
+        let fileManager = FileManager.default
+        let root = projectPath.resolvingSymlinksInPath()
+        var found: String?
+        for location in Self.masterPlanLocations {
+            let candidate = root.appendingPathComponent(location).resolvingSymlinksInPath()
+            // A plan that is a symlink out of the project is not the project's own description.
+            guard candidate.pathComponents.starts(with: root.pathComponents) else { continue }
+            if let data = fileManager.contents(atPath: candidate.path),
+               let text = String(data: data, encoding: .utf8) {
+                found = text
+                break
+            }
         }
+        guard let content = found else { return nil }
 
         if content.contains("[PROJECT_NAME]") || content.contains("[Describe the core mission") {
             return nil
@@ -113,6 +128,8 @@ public struct DesignDocExtractor: Sendable {
         }
         if let users = extractSection(named: "Target Users", from: content) {
             parts.append("Target Users: \(users)")
+        } else if let consumers = extractSection(named: "Target Consumers", from: content) {
+            parts.append("Target Consumers: \(consumers)")
         }
         if let differentiators = extractSection(named: "Key Differentiators", from: content) {
             parts.append("Key Differentiators: \(differentiators)")
@@ -129,7 +146,7 @@ public struct DesignDocExtractor: Sendable {
 
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed == "### \(heading)" {
+            if trimmed == "### \(heading)" || trimmed == "## \(heading)" {
                 capturing = true
                 continue
             }
