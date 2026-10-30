@@ -231,3 +231,83 @@ struct DesignDocExtractorTests {
         #expect(!facts.architectureNotes.isEmpty)
     }
 }
+
+@Suite("DesignDocExtractor v2 Master Plan Location")
+struct DesignDocExtractorV2LocationTests {
+
+    static let plan = """
+    # Core Master Plan
+
+    ## Project Overview
+
+    ### Mission
+    A pure-Swift headless rules engine for a Risk-style strategy game.
+
+    ### Target Consumers
+    - The iconquer app
+
+    ### Key Differentiators
+    - Deterministic seeded RNG
+
+    ---
+
+    ## Architecture
+    """
+
+    private func fixture(planAt relativePath: String, content: String = plan) throws -> URL {
+        let dir = try makeFixtureDirectory(prefix: "showcase-v2plan")
+        try runGit(["init", "-q"], in: dir)
+        let file = dir.appendingPathComponent(relativePath)
+        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try content.write(to: file, atomically: true, encoding: .utf8)
+        return dir
+    }
+
+    @Test("Reads project/master_plan.md, the v2 location")
+    func readsV2Location() async throws {
+        let dir = try fixture(planAt: "project/master_plan.md")
+        let facts = try await DesignDocExtractor().extract(from: dir)
+        let description = try #require(facts.projectDescription, "a v2 plan must ground the narrative")
+        #expect(description.contains("headless rules engine"))
+    }
+
+    @Test("Accepts Target Consumers as the audience heading")
+    func targetConsumers() async throws {
+        let dir = try fixture(planAt: "project/master_plan.md")
+        let description = try #require(try await DesignDocExtractor().extract(from: dir).projectDescription)
+        #expect(description.contains("iconquer app"))
+        #expect(description.contains("Deterministic seeded RNG"))
+    }
+
+    @Test("Reads a root MASTER_PLAN.md")
+    func readsRootPlan() async throws {
+        let dir = try fixture(planAt: "MASTER_PLAN.md")
+        let description = try #require(try await DesignDocExtractor().extract(from: dir).projectDescription)
+        #expect(description.hasPrefix("Mission: A pure-Swift headless rules engine"))
+    }
+
+    @Test("An unfilled v2 template still yields no description")
+    func templateRejected() async throws {
+        let template = "## Project Overview\n\n### Mission\n[Describe the core mission of this project]\n"
+        let dir = try fixture(planAt: "project/master_plan.md", content: template)
+        #expect(try await DesignDocExtractor().extract(from: dir).projectDescription == nil)
+    }
+}
+
+@Suite("DesignDocExtractor Plan Containment")
+struct DesignDocExtractorContainmentTests {
+
+    @Test("A master plan that is a symlink out of the project is ignored")
+    func symlinkEscape() async throws {
+        let outside = try makeFixtureDirectory(prefix: "showcase-outside")
+        try writeFixtureFile("## Project Overview\n\n### Mission\nSomeone else's project.\n", named: "plan.md", in: outside)
+        let project = try makeFixtureDirectory(prefix: "showcase-inside")
+        try runGit(["init", "-q"], in: project)
+        try FileManager.default.createDirectory(at: project.appendingPathComponent("project"), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: project.appendingPathComponent("project/master_plan.md"),
+            withDestinationURL: outside.appendingPathComponent("plan.md"))
+        let facts = try await DesignDocExtractor().extract(from: project)
+        #expect(facts.projectDescription == nil)
+    }
+}

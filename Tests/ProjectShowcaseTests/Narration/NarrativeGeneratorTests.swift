@@ -253,3 +253,21 @@ struct NarrativeEndpointAllowlistTests {
         #expect(!NarrativeGenerator.isAllowedEndpoint(try #require(URL(string: url))), "\(url)")
     }
 }
+
+@Suite("NarrativeGenerator Request Tests")
+struct NarrativeGeneratorRequestTests {
+
+    @Test("A narrative request allows far longer than URLSession's 60 second default")
+    func timeoutOutlastsDefault() throws {
+        let request = try NarrativeGenerator(apiKey: "k").makeRequest(body: Data("{}".utf8))
+        #expect(request.timeoutInterval >= 300)
+        #expect(request.url?.host == "api.anthropic.com")
+        #expect(request.value(forHTTPHeaderField: "x-api-key") == "k")
+    }
+
+    @Test("The request is refused for a disallowed host")
+    func refusesLookalike() {
+        let generator = NarrativeGenerator(apiKey: "k", baseURL: "https://evilanthropic.com")
+        #expect(throws: ShowcaseError.self) { try generator.makeRequest(body: Data()) }
+    }
+}
