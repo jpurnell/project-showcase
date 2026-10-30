@@ -85,7 +85,7 @@ ProjectShowcase/
 │       ├── PortfolioCommand.swift
 │       └── InfographicsCommand.swift
 ├── Tests/
-│   └── ProjectShowcaseTests/     # 208 tests across 41 suites
+│   └── ProjectShowcaseTests/     # 213 tests across 42 suites
 └── Package.swift
 ```
 
@@ -141,6 +141,7 @@ ProjectShowcase/
 - [ ] HTML standalone output
 
 ### Known Issues
+- **Most existing showcase pages describe private repositories.** Of the 33 manifest entries, 12 are public on GitHub and 21 are not (checked 2026-10-30 against `gh repo list jpurnell --visibility public`, which returns exactly the 100 public repos the API reports). `discover` only proposes public repos, but `sync` keeps refreshing all 33, and the May batch published 19 of the private ones. Whether to unpublish them, or skip private sources in `sync`, is the owner's decision and is open
 - ~~MASTER_PLAN.md grounding~~ read only the pre-v2 path (`development-guidelines/00_CORE_RULES/00_MASTER_PLAN.md`), so it silently stopped working for every project migrated in August 2026; fixed 2026-10-30. The checklist item above claimed it worked and the tests passed, because the fixtures used the old layout. It was found only because a regenerated page described a game engine as an icon library
 - Five source repos have no usable master plan (`org-judgement-corpus`, `quality-gate-swift`, `quality-gate-types`, `swift-security-rules`, `geo-audit`); `sync` leaves their pages as published until they get one
 - Claude Code insights schema is undocumented and may change without notice — extraction is optional and degrades gracefully
@@ -172,7 +173,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ### Code Quality
 - All code follows `coding_rules.md`
-- 208 tests across 41 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
+- 213 tests across 42 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
 - Documentation for all public APIs
 - No warnings in build output
 - Strict concurrency enabled (StrictConcurrency upcoming feature flag)
@@ -240,7 +241,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ---
 
-**Last Updated:** 2026-10-30 — reconciled test counts (128 → 208), recorded `showcase sync`, its
+**Last Updated:** 2026-10-30 — reconciled test counts (128 → 213), recorded `showcase sync`, its
 grounding guard and the weekly launchd job in Current Status, and recorded the master-plan path
 bug in Known Issues with the reason it went unseen. The August 25 reconciliation (119 → 128,
 `ProcessRunner`) stands.

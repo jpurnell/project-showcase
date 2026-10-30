@@ -19,6 +19,7 @@ public struct MarkdownRenderer: Sendable {
     ///   - narrative: The narrative to render.
     ///   - projectLabel: Replaces the `project:` value, which otherwise is the project name.
     ///   - tags: Replaces the derived `tags:` list, for pages whose tags are curated by hand.
+    ///   - published: The `published:` flag. Pass `false` to keep a page the owner withheld withheld.
     ///   - publishedDate: Replaces `date:`, so regenerating a page keeps its original publication
     ///     date. Feeds, sitemaps and index pages order by `date:`; stamping every regeneration
     ///     with the current time would present each as new content.
@@ -26,7 +27,8 @@ public struct MarkdownRenderer: Sendable {
         narrative: NarrativeResult,
         projectLabel: String? = nil,
         tags: [String]? = nil,
-        publishedDate: String? = nil
+        publishedDate: String? = nil,
+        published: Bool = true
     ) throws -> String {
         let dateTimeFormatter = DateFormatter()
         dateTimeFormatter.dateFormat = "yyyy-MM-dd HH:mm"
@@ -51,7 +53,7 @@ public struct MarkdownRenderer: Sendable {
         output += "layout: ShowcaseLayout\n"
         output += "style: \(narrative.style.rawValue)\n"
         output += "project: \(projectLabel ?? narrative.projectName)\n"
-        output += "published: true\n"
+        output += "published: \(published)\n"
         output += "---\n"
 
         output += "\n"
@@ -71,9 +73,10 @@ public struct MarkdownRenderer: Sendable {
     ///   - narrative: The narrative to render.
     ///   - outputDirectory: Directory the file is written into.
     ///   - slug: File stem to use instead of one derived from the project name.
-    ///   - projectLabel: See ``render(narrative:projectLabel:tags:publishedDate:)``.
-    ///   - tags: See ``render(narrative:projectLabel:tags:publishedDate:)``.
-    ///   - publishedDate: See ``render(narrative:projectLabel:tags:publishedDate:)``.
+    ///   - projectLabel: See ``render(narrative:projectLabel:tags:publishedDate:published:)``.
+    ///   - tags: See ``render(narrative:projectLabel:tags:publishedDate:published:)``.
+    ///   - publishedDate: See ``render(narrative:projectLabel:tags:publishedDate:published:)``.
+    ///   - published: See ``render(narrative:projectLabel:tags:publishedDate:published:)``.
     /// - Returns: URL of the written file.
     /// - Throws: ``ShowcaseError/renderingFailed(message:)`` for a slug that is not a plain file stem.
     public func renderToFile(
@@ -82,9 +85,12 @@ public struct MarkdownRenderer: Sendable {
         slug: String? = nil,
         projectLabel: String? = nil,
         tags: [String]? = nil,
-        publishedDate: String? = nil
+        publishedDate: String? = nil,
+        published: Bool = true
     ) throws -> URL {
-        let content = try render(narrative: narrative, projectLabel: projectLabel, tags: tags, publishedDate: publishedDate)
+        let content = try render(
+            narrative: narrative, projectLabel: projectLabel, tags: tags,
+            publishedDate: publishedDate, published: published)
         let stem = slug ?? narrative.projectName
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")

@@ -109,7 +109,8 @@ struct SyncCommand: AsyncParsableCommand {
                 let written = try renderer.renderToFile(
                     narrative: narrative, outputDirectory: contentURL,
                     slug: entry.slug, projectLabel: entry.group, tags: entry.tags,
-                    publishedDate: existing.flatMap { FrontmatterReader.value(for: "date", in: $0) })
+                    publishedDate: existing.flatMap { FrontmatterReader.value(for: "date", in: $0) },
+                    published: Publication.isPublished(existingPage: existing))
                 if let imagesURL { try InfographicWriter.write(card: card, slug: entry.slug, to: imagesURL) }
                 syncState.records[entry.slug] = SyncRecord(head: head, generatedAt: Date())
                 try syncState.save(to: stateURL)

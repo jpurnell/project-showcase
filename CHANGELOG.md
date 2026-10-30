@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Regeneration published pages the owner had withheld.** The renderer wrote `published: true`
+  unconditionally, so `sync` flipped two deliberately unpublished pages (`narbis`, `swiftsvg`,
+  both private repositories) live. A regenerated page now keeps the `published:` flag its
+  existing file carries; only an explicit `false` is preserved, and a new page is published.
+  Found by comparing `published:` across the first sync's commits.
 - **`sync` never wrote a page's infographics.** The site's layout requests
   `/images/showcase/<slug>-{stats,commits,releases}.svg`, so every page `sync` created showed three
   broken images, and the pages it refreshed kept the commit counts of the original May run. Pages
