@@ -261,7 +261,8 @@ Three rules keep it from publishing something wrong:
 - **An unreadable repo is skipped**, even under `--force`.
 
 **Automating it.** `scripts/sync-site.sh` runs the sync, rebuilds the site, and opens a pull
-request on a `showcase/sync-<date>` branch; it never pushes to `main`. `deploy/com.jpurnell.showcase-sync.plist`
+request on a `showcase/sync-<date>` branch and merges it when the sync was clean (after any page
+failure it leaves the PR open); it never pushes to `main` directly. `deploy/com.jpurnell.showcase-sync.plist`
 runs it Mondays at 06:30. Setup: put `ANTHROPIC_API_KEY=...` in `~/.config/showcase/env` (mode
 600), copy the plist to `~/Library/LaunchAgents/`, and `launchctl bootstrap gui/$(id -u)` it. Set
 `SHOWCASE_DRY=1` to print the plan without calling the API.

@@ -2,7 +2,9 @@
 # Keeps justinpurnell.com's showcase pages current.
 #
 # Regenerates every page whose source repository has new commits (`showcase sync`), rebuilds the
-# site, and opens a pull request on a dated branch. It never pushes to main: a person merges.
+# site, and opens a pull request on a dated branch. It never pushes to main directly. When the sync
+# finishes clean (exit 0, no page failed) it merges that pull request, which publishes the site;
+# on any failure it leaves the PR open for a person to review.
 #
 # Config (environment, all optional):
 #   SITE_DIR       the website checkout           (default: ../justinpurnell.com beside this repo)
@@ -78,6 +80,8 @@ gh pr create --base main --head "$BRANCH" \
 
 git checkout -q main
 if [ "$SYNC_STATUS" -ne 0 ]; then
-  die "partial failure: some pages did not regenerate; PR opened for the rest"
+  die "partial failure: some pages did not regenerate; PR left open for review"
 fi
-notify "Showcase PR opened on $BRANCH"
+gh pr merge "$BRANCH" --merge --delete-branch || die "sync was clean but the PR could not be merged"
+git pull -q --ff-only origin main
+notify "Showcase sync merged and published ($BRANCH)"

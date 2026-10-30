@@ -46,8 +46,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `MarkdownRenderer` accepts a slug, `project:` label and tag list, and `ProjectCard.renamed(to:)`
   covers pages that describe one module of a larger repository.
 - `scripts/sync-site.sh` and `deploy/com.jpurnell.showcase-sync.plist`: a weekly launchd job that
-  runs the sync, rebuilds the site and opens a pull request on a dated branch. It never pushes
-  to `main`.
+  runs the sync, rebuilds the site and opens a pull request on a dated branch, merging it when
+  the sync finished clean and leaving it open for review after any page failure.
 - `ProcessRunner`: the single subprocess spawn site for the package, bounding every run with a
   watchdog and capturing output through files rather than pipes
 - `ShowcaseError.processTimedOut(executable:seconds:)` for a child that outlives its deadline
