@@ -253,6 +253,9 @@ A manifest names each page and what it is generated from:
 }
 ```
 
+Regeneration preserves what a person decided about a page: its `date:`, tags, `project:` group and
+`published:` flag (an explicit `published: false` stays false).
+
 A manifest's optional `imagesDirectory` is where each regenerated page's `<slug>-stats.svg`, `-commits.svg`
 and `-releases.svg` are written, named by slug because that is what the site's layout requests.
 `name` overrides the display name when a page covers one module of a larger repo, `group` sets the
@@ -369,7 +372,7 @@ Sources/
     DeclineCommand.swift              # Removes pages and remembers them as declined
 
 Tests/
-  ProjectShowcaseTests/       # 208 tests across 41 suites
+  ProjectShowcaseTests/       # 213 tests across 42 suites
     Gathering/                # Extractor unit tests
     Models/                   # Serialization round-trip tests
     Narration/                # Prompt construction, response parsing

@@ -403,3 +403,42 @@ struct ManifestImagesTests {
         #expect(!String(decoding: try manifest.encoded(), as: UTF8.self).contains("imagesDirectory"))
     }
 }
+
+@Suite("Published Flag Tests")
+struct PublishedFlagTests {
+
+    @Test("A page is published unless told otherwise")
+    func defaultsToPublished() throws {
+        let output = try MarkdownRenderer().render(narrative: MarkdownRendererTests.sampleNarrative)
+        #expect(output.contains("published: true\n"))
+    }
+
+    @Test("A page that was unpublished stays unpublished when it is regenerated")
+    func keepsUnpublished() throws {
+        let output = try MarkdownRenderer().render(narrative: MarkdownRendererTests.sampleNarrative, published: false)
+        #expect(output.contains("published: false\n"))
+        #expect(!output.contains("published: true"))
+    }
+
+    @Test("The flag an existing page carries is read from its frontmatter")
+    func readsFlag() {
+        #expect(Publication.isPublished(existingPage: "---\ntitle: X\npublished: false\n---\n\nbody") == false)
+        #expect(Publication.isPublished(existingPage: "---\ntitle: X\npublished: true\n---\n\nbody") == true)
+    }
+
+    @Test("No page, or no flag, means published; only an explicit false withholds a page")
+    func absentMeansPublished() {
+        #expect(Publication.isPublished(existingPage: nil) == true)
+        #expect(Publication.isPublished(existingPage: "---\ntitle: X\n---\n") == true)
+        #expect(Publication.isPublished(existingPage: "---\npublished: nope\n---\n") == true)
+        #expect(Publication.isPublished(existingPage: "---\npublished: False\n---\n") == false)
+    }
+
+    @Test("renderToFile passes the flag through")
+    func fileHonoursFlag() throws {
+        let dir = try makeFixtureDirectory(prefix: "showcase-pub")
+        let url = try MarkdownRenderer().renderToFile(
+            narrative: MarkdownRendererTests.sampleNarrative, outputDirectory: dir, slug: "x", published: false)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("published: false\n"))
+    }
+}
