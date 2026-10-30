@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **`sync` never wrote a page's infographics.** The site's layout requests
+  `/images/showcase/<slug>-{stats,commits,releases}.svg`, so every page `sync` created showed three
+  broken images, and the pages it refreshed kept the commit counts of the original May run. Pages
+  `sync` regenerates now get their SVGs, named by slug, in the manifest's `imagesDirectory`;
+  `--infographics-only` refreshes all of them without an API key; and `decline` deletes them.
 - `discover` wrote an absolute path into the manifest whenever the folder was reached under a
   different spelling of its case; the relative-path check is now case-insensitive and tested.
 - **`ProcessRunner`'s documentation promised that `environment: nil` inherits the parent's

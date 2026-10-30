@@ -85,7 +85,7 @@ ProjectShowcase/
 │       ├── PortfolioCommand.swift
 │       └── InfographicsCommand.swift
 ├── Tests/
-│   └── ProjectShowcaseTests/     # 201 tests across 39 suites
+│   └── ProjectShowcaseTests/     # 208 tests across 41 suites
 └── Package.swift
 ```
 
@@ -172,7 +172,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ### Code Quality
 - All code follows `coding_rules.md`
-- 201 tests across 39 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
+- 208 tests across 41 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
 - Documentation for all public APIs
 - No warnings in build output
 - Strict concurrency enabled (StrictConcurrency upcoming feature flag)
@@ -240,7 +240,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ---
 
-**Last Updated:** 2026-10-30 — reconciled test counts (128 → 201), recorded `showcase sync`, its
+**Last Updated:** 2026-10-30 — reconciled test counts (128 → 208), recorded `showcase sync`, its
 grounding guard and the weekly launchd job in Current Status, and recorded the master-plan path
 bug in Known Issues with the reason it went unseen. The August 25 reconciliation (119 → 128,
 `ProcessRunner`) stands.

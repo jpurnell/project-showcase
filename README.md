@@ -234,6 +234,9 @@ Options:
   --force                 Regenerate selected pages even if their source has not moved
   --dry-run               Print the plan; no API calls, nothing written
   --no-portfolio          Do not regenerate portfolio-overview.md
+  --infographics-only     Rewrite every selected page's three SVGs from the repo's current facts;
+                          no narrative, no API key, no markdown
+  --images-dir <dir>      Write SVGs here instead of the manifest's imagesDirectory
 ```
 
 A manifest names each page and what it is generated from:
@@ -250,6 +253,8 @@ A manifest names each page and what it is generated from:
 }
 ```
 
+A manifest's optional `imagesDirectory` is where each regenerated page's `<slug>-stats.svg`, `-commits.svg`
+and `-releases.svg` are written, named by slug because that is what the site's layout requests.
 `name` overrides the display name when a page covers one module of a larger repo, `group` sets the
 page's `project:` label, and `tags` preserves a hand-curated tag list across regeneration.
 
@@ -364,7 +369,7 @@ Sources/
     DeclineCommand.swift              # Removes pages and remembers them as declined
 
 Tests/
-  ProjectShowcaseTests/       # 201 tests across 39 suites
+  ProjectShowcaseTests/       # 208 tests across 41 suites
     Gathering/                # Extractor unit tests
     Models/                   # Serialization round-trip tests
     Narration/                # Prompt construction, response parsing
