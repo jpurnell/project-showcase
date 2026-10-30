@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- `discover` wrote an absolute path into the manifest whenever the folder was reached under a
+  different spelling of its case; the relative-path check is now case-insensitive and tested.
 - **`ProcessRunner`'s documentation promised that `environment: nil` inherits the parent's
   environment; it gives the child an empty one.** Assigning `nil` to `Process.environment` does
   not inherit. `gh` therefore reported "not logged in" (it found neither `HOME` nor the keychain
@@ -41,6 +43,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   compiler had already decided. It now checks what each generator draws through the protocol.
 
 ### Added
+- **An approve step for new pages.** When a run adds pages, the weekly job leaves its PR open and
+  shows a dialog with a button that runs `scripts/review-site.sh`: it serves the PR's built site
+  locally, opens each new page, and asks approve / decline / skip. `showcase decline` removes a
+  declined page and records it in the manifest's `declined` list, which `discover` honours. A run
+  that only refreshes existing pages still merges itself.
 - **`showcase discover`** proposes new pages without anyone choosing them. A repository
   qualifies if GitHub lists it as public under the owner (not a fork, not archived), it has a
   master plan, 30+ commits, and a commit in the last year; remotes an existing page covers are

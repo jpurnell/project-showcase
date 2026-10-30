@@ -235,3 +235,93 @@ struct ManifestAppendTests {
         #expect(decoded == merged)
     }
 }
+
+@Suite("Decline Tests")
+struct DeclineTests {
+
+    static func entry(_ slug: String) -> SyncEntry {
+        SyncEntry(slug: slug, path: slug, name: nil, group: nil, tags: nil, audience: .selfReflection, style: .caseStudy)
+    }
+
+    static let manifest = SyncManifest(sourceRoot: "..", contentDirectory: "c", entries: [entry("a"), entry("b"), entry("c")])
+
+    @Test("A manifest written before `declined` existed still decodes, with none declined")
+    func oldManifestDecodes() throws {
+        let json = #"{"sourceRoot":"..","contentDirectory":"c","entries":[]}"#
+        #expect(try SyncManifest.decode(from: Data(json.utf8)).declined.isEmpty)
+    }
+
+    @Test("Declining removes the entry and remembers the slug")
+    func declines() {
+        let result = Self.manifest.declining(["b"])
+        #expect(result.entries.map(\.slug) == ["a", "c"])
+        #expect(result.declined == ["b"])
+    }
+
+    @Test("Declining twice, or declining a slug that is not there, adds it once and changes nothing else")
+    func idempotent() {
+        let once = Self.manifest.declining(["b"])
+        let twice = once.declining(["b", "ghost"])
+        #expect(twice.entries.map(\.slug) == ["a", "c"])
+        #expect(twice.declined == ["b", "ghost"])
+    }
+
+    @Test("A declined list survives encode and decode")
+    func roundTrip() throws {
+        let declined = Self.manifest.declining(["b"])
+        #expect(try SyncManifest.decode(from: try declined.encoded()) == declined)
+    }
+
+    @Test("An unchanged manifest encodes without a declined key")
+    func noEmptyKey() throws {
+        let text = String(decoding: try Self.manifest.encoded(), as: UTF8.self)
+        #expect(!text.contains("declined"))
+    }
+
+    @Test("A declined slug is never proposed again")
+    func notReproposed() {
+        let publicRepos = ["jpurnell/good": RemoteRepo(isFork: false, isArchived: false)]
+        let repo = RepoFacts(path: "/s/Good", name: "Good", commitCount: 100,
+                             lastCommit: DiscoveryPolicyTests.recent, remoteSlug: "jpurnell/good", hasMasterPlan: true)
+        let policy = DiscoveryPolicy(minCommits: 30, maxAgeDays: 365, maxNew: 5)
+        func propose(declined: Set<String>) -> [RepoFacts] {
+            Discovery.propose(repos: [repo], publicRepos: publicRepos, owner: "jpurnell", policy: policy,
+                              coveredRemotes: [], existingSlugs: declined, now: DiscoveryPolicyTests.now)
+        }
+        #expect(propose(declined: []).count == 1)
+        #expect(propose(declined: ["good"]).isEmpty)
+    }
+
+    @Test("Declining drops the page's sync record so a later re-add starts fresh")
+    func dropsState() {
+        var state = SyncState()
+        state.records["b"] = SyncRecord(head: "1", generatedAt: Date(timeIntervalSince1970: 0))
+        state.records["a"] = SyncRecord(head: "2", generatedAt: Date(timeIntervalSince1970: 0))
+        let trimmed = state.removing(["b"])
+        #expect(trimmed.records.keys.sorted() == ["a"])
+    }
+}
+
+@Suite("Discovery Relative Path Tests")
+struct DiscoveryRelativePathTests {
+
+    @Test("A path under the root becomes relative to it")
+    func relative() {
+        let base = URL(fileURLWithPath: "/Users/me/Dev/Swift", isDirectory: true)
+        #expect(Discovery.relativePath(of: "/Users/me/Dev/Swift/Tools/oauth", from: base) == "Tools/oauth")
+    }
+
+    @Test("A different spelling of the same folder's case still matches, as on a case-insensitive volume")
+    func caseDifference() {
+        let base = URL(fileURLWithPath: "/Users/me/dropbox/dev/swift", isDirectory: true)
+        #expect(Discovery.relativePath(of: "/Users/me/Dropbox/Dev/Swift/Tools/oauth", from: base) == "Tools/oauth")
+    }
+
+    @Test("A path outside the root, or the root itself, stays absolute")
+    func outside() {
+        let base = URL(fileURLWithPath: "/Users/me/Dev/Swift", isDirectory: true)
+        #expect(Discovery.relativePath(of: "/Users/me/Other/x", from: base) == "/Users/me/Other/x")
+        #expect(Discovery.relativePath(of: "/Users/me/Dev/Swift", from: base) == "/Users/me/Dev/Swift")
+        #expect(Discovery.relativePath(of: "/Users/me/Dev/SwiftExtra/x", from: base) == "/Users/me/Dev/SwiftExtra/x")
+    }
+}

@@ -203,6 +203,19 @@ public enum Discovery {
         return slug.isEmpty ? nil : slug
     }
 
+    /// `path` relative to `base` when it lies strictly under it, otherwise `path` unchanged.
+    ///
+    /// Components are compared ignoring case, because the same folder is spelled differently
+    /// depending on how it was reached on a case-insensitive volume.
+    public static func relativePath(of path: String, from base: URL) -> String {
+        let target = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
+        let root = base.standardizedFileURL.pathComponents
+        guard target.count > root.count,
+              zip(target, root).allSatisfy({ $0.caseInsensitiveCompare($1) == .orderedSame })
+        else { return path }
+        return target.dropFirst(root.count).joined(separator: "/")
+    }
+
     /// The manifest entry for a proposed repository, with the standard audience and style.
     public static func entry(for repo: RepoFacts, relativePath: String) -> SyncEntry? {
         guard let slug = slug(for: repo.name) else { return nil }

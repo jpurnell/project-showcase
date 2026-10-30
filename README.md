@@ -276,9 +276,29 @@ run, most history first, which bounds API spend and lets a backlog drain over se
 `--add` it only prints. It needs `gh` signed in; if that fails it errors rather than reading an empty
 list as "nothing is public".
 
+### Approving new pages
+
+A page `discover` adds has never been read by a person, so nothing new goes live unseen. When a
+weekly run adds pages, the job leaves its PR open and shows a dialog listing them, with a **Review
+now** button that opens `scripts/review-site.sh` in Terminal. (Pages that are only refreshes of
+existing ones, with a clean sync, still merge on their own.)
+
+`review-site.sh [PR#]` checks out the PR branch, serves its built `docs/` locally on the first free
+port from 8000 (as Ignite's own `ignite run` does), opens each new page, and asks per page:
+
+- `a` approve, keep it
+- `d` decline: `showcase decline` removes it from the manifest and sync state, deletes its markdown,
+  and records the slug under `declined` in the manifest so `discover` never proposes it again; the
+  site is rebuilt and the commit pushed to the PR
+- `s` skip and stop, leaving the PR open
+
+When every new page is decided, the PR is merged, which publishes. `showcase decline --manifest m.json
+<slug>…` can also be run by hand.
+
 **Automating it.** `scripts/sync-site.sh` runs `discover --add`, then the sync, rebuilds the site, and opens a pull
-request on a `showcase/sync-<date>` branch and merges it when the sync was clean (after any page
-failure it leaves the PR open); it never pushes to `main` directly. `deploy/com.jpurnell.showcase-sync.plist`
+request on a `showcase/sync-<date>` branch and merges it when the sync was clean and added no new
+pages (a page failure, or any new page, leaves the PR open for review); it never pushes to `main`
+directly. `deploy/com.jpurnell.showcase-sync.plist`
 runs it Mondays at 06:30. Setup: put `ANTHROPIC_API_KEY=...` in `~/.config/showcase/env` (mode
 600), copy the plist to `~/Library/LaunchAgents/`, and `launchctl bootstrap gui/$(id -u)` it. Set
 `SHOWCASE_DRY=1` to print the plan without calling the API.
@@ -341,9 +361,10 @@ Sources/
     InfographicsCommand.swift
     SyncCommand.swift                 # Manifest-driven regeneration
     DiscoverCommand.swift             # Proposes new public repos for the manifest
+    DeclineCommand.swift              # Removes pages and remembers them as declined
 
 Tests/
-  ProjectShowcaseTests/       # 191 tests across 37 suites
+  ProjectShowcaseTests/       # 201 tests across 39 suites
     Gathering/                # Extractor unit tests
     Models/                   # Serialization round-trip tests
     Narration/                # Prompt construction, response parsing
