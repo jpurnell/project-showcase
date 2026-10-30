@@ -134,6 +134,9 @@ ProjectShowcase/
 - [x] `showcase sync`: manifest-driven regeneration of only the pages whose source repo moved (2026-10-30). Shipped ahead of the Roadmap's "GitHub Actions integration" idea, as a local launchd job instead, because the source repos are private and hosted macOS is billed 10x
 - [x] `showcase discover`: proposes new pages from public, owned, active, plan-bearing repos, five per run (2026-10-30). The manifest was previously only the 28 pages the May batch happened to produce
 - [x] Approve step: new pages from `discover` wait for a person (dialog, local preview, approve / decline); declined slugs are remembered
+- [x] Infographics: `sync` writes each regenerated page's three SVGs, named by slug; `sync --infographics-only` refreshes all of them without an API key
+- [x] Editorial fields survive regeneration: `date:`, tags, `project:` group and `published:` (an explicit `false` stays false)
+- [x] Master plans written for the five repos that had none; the pages regenerated from them (website PR #2, awaiting review)
 - [x] Grounding guard: `sync` will not replace a published page with a narrative the card cannot ground
 - [ ] GenericExtractor (fallback file counting, language detection for non-manifest projects)
 - [ ] MCP server wrapper
@@ -143,13 +146,13 @@ ProjectShowcase/
 ### Known Issues
 - **Most existing showcase pages describe private repositories** (decided 2026-10-30: keep them). Of the 33 manifest entries, 12 are public on GitHub and 21 are not (checked against `gh repo list jpurnell --visibility public`, which returns exactly the 100 public repos the API reports); the May batch published 19 of the private ones. The owner chose to leave them live. `discover` still proposes only public repos, and `sync` keeps refreshing all 33, so those pages stay current. Reversible: unpublish by setting `published: false`, which regeneration now preserves
 - ~~MASTER_PLAN.md grounding~~ read only the pre-v2 path (`development-guidelines/00_CORE_RULES/00_MASTER_PLAN.md`), so it silently stopped working for every project migrated in August 2026; fixed 2026-10-30. The checklist item above claimed it worked and the tests passed, because the fixtures used the old layout. It was found only because a regenerated page described a game engine as an icon library
-- Five source repos have no usable master plan (`org-judgement-corpus`, `quality-gate-swift`, `quality-gate-types`, `swift-security-rules`, `geo-audit`); `sync` leaves their pages as published until they get one
+- ~~Five source repos have no usable master plan~~ (`org-judgement-corpus`, `quality-gate-swift`, `quality-gate-types`, `swift-security-rules`, `geo-audit`; `sync` left their pages as published). Resolved 2026-10-30: each now has a plan, written by agents from the repos' own files and spot-checked, committed locally and unpushed. `quality-gate-swift` gitignores `/project/` on purpose, so its plan is an untracked file (it works while the repo stays on this Mac; a fresh clone would lose it). The plans are drafts that now define what the site says about those projects, so they want an owner read-through
 - Claude Code insights schema is undocumented and may change without notice — extraction is optional and degrades gracefully
 - Narrative quality varies by project complexity; sparse projects (few commits, no tests) produce generic output
 - `git shortlog` hangs when stdin is a TTY; `ProcessRunner` sets `FileHandle.nullDevice` for every child, so this is now handled in one place rather than per call site
 
 ### Current Priorities
-1. Write master plans for the five repos `sync` skips (see Known Issues), then run `showcase sync --force --only <slug>` for each
+1. ~~Write master plans for the five repos `sync` skips, then regenerate them~~ done 2026-10-30 (website PR #2); the owner still needs to read the five plans and merge the PR
 2. GenericExtractor for projects without package manifests
 3. Narrative caching to avoid redundant API calls on re-runs
 
@@ -236,12 +239,14 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 ### Future Considerations
 - Freemium monetization: gather/render free, narrate Stripe-gated
 - HTML standalone output for non-SSG users
-- GitHub Actions integration for automated portfolio updates on push
+- ~~GitHub Actions integration for automated portfolio updates on push~~ shipped as a weekly local launchd job (`scripts/sync-site.sh`) instead, because the source repos are private and hosted macOS is billed 10x on private repos
 - Multi-language narrative generation
 
 ---
 
-**Last Updated:** 2026-10-30 (private-page decision recorded) — reconciled test counts (128 → 213), recorded `showcase sync`, its
-grounding guard and the weekly launchd job in Current Status, and recorded the master-plan path
-bug in Known Issues with the reason it went unseen. The August 25 reconciliation (119 → 128,
-`ProcessRunner`) stands.
+**Last Updated:** 2026-10-30 — session reconciliation. Test counts 128 → 213 (42 suites). Added to Current Status:
+`sync`, `discover`, the approve step, infographics in `sync`, preservation of editorial fields, and master plans for the
+five repos that had none. Resolved (struck through, reasoning kept): the "five repos have no master plan" known issue,
+priority 1, and the "GitHub Actions integration" idea, which shipped as a local launchd job rather than CI. Recorded the
+`MASTER_PLAN.md` path bug (grounding silently stopped working after the v2 migration) and the open question about
+private-repo pages (decided: keep them live). The August 25 reconciliation (119 → 128, `ProcessRunner`) stands.
