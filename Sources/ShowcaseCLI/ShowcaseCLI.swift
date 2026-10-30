@@ -14,6 +14,7 @@ struct ShowcaseCLI: AsyncParsableCommand {
             InfographicsCommand.self,
             SyncCommand.self,
             DiscoverCommand.self,
+            DeclineCommand.self,
         ],
         defaultSubcommand: RefreshCommand.self
     )

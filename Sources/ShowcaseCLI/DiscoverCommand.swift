@@ -66,10 +66,10 @@ struct DiscoverCommand: AsyncParsableCommand {
         let proposals = Discovery.propose(
             repos: repos, publicRepos: publicRepos, owner: owner,
             policy: DiscoveryPolicy(minCommits: minCommits, maxAgeDays: maxAgeDays, maxNew: maxNew),
-            coveredRemotes: covered, existingSlugs: Set(loaded.entries.map(\.slug)), now: Date())
+            coveredRemotes: covered, existingSlugs: Set(loaded.entries.map(\.slug)).union(loaded.declined), now: Date())
 
         let entries = proposals.compactMap { repo in
-            Discovery.entry(for: repo, relativePath: Self.relativePath(of: repo.path, from: sourceRoot))
+            Discovery.entry(for: repo, relativePath: Discovery.relativePath(of: repo.path, from: sourceRoot))
         }
         for (repo, entry) in zip(proposals, entries) {
             report("[\(entry.slug)] propose: \(repo.commitCount) commits, \(repo.remoteSlug ?? "?") -> \(entry.path)")
@@ -79,14 +79,8 @@ struct DiscoverCommand: AsyncParsableCommand {
         guard add, !entries.isEmpty else { return }
         try loaded.appending(entries).encoded().write(to: manifestURL, options: .atomic)
         report("manifest updated: \(manifestURL.path)")
-    }
-
-    /// `path` relative to `base` when it lies under it, otherwise absolute.
-    static func relativePath(of path: String, from base: URL) -> String {
-        let target = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
-        let root = base.standardizedFileURL.pathComponents
-        guard target.starts(with: root), target.count > root.count else { return path }
-        return target.dropFirst(root.count).joined(separator: "/")
+        // The only thing on stdout: one added slug per line, for the weekly script to read.
+        for entry in entries { FileHandle.standardOutput.write(Data((entry.slug + "\n").utf8)) }
     }
 
     private func report(_ line: String) {

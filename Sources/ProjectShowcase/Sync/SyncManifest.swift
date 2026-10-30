@@ -55,12 +55,37 @@ public struct SyncManifest: Codable, Sendable, Equatable {
     public let contentDirectory: String
     /// The pages to keep current.
     public let entries: [SyncEntry]
+    /// Slugs a person declined, which discovery never proposes again.
+    public let declined: [String]
+
+    private enum CodingKeys: String, CodingKey {
+        case sourceRoot, contentDirectory, entries, declined
+    }
 
     /// Creates a manifest.
-    public init(sourceRoot: String, contentDirectory: String, entries: [SyncEntry]) {
+    public init(sourceRoot: String, contentDirectory: String, entries: [SyncEntry], declined: [String] = []) {
         self.sourceRoot = sourceRoot
         self.contentDirectory = contentDirectory
         self.entries = entries
+        self.declined = declined
+    }
+
+    /// Decodes a manifest; one written before `declined` existed has none declined.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sourceRoot = try container.decode(String.self, forKey: .sourceRoot)
+        contentDirectory = try container.decode(String.self, forKey: .contentDirectory)
+        entries = try container.decode([SyncEntry].self, forKey: .entries)
+        declined = try container.decodeIfPresent([String].self, forKey: .declined) ?? []
+    }
+
+    /// Encodes the manifest, leaving `declined` out while nothing has been declined.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(sourceRoot, forKey: .sourceRoot)
+        try container.encode(contentDirectory, forKey: .contentDirectory)
+        try container.encode(entries, forKey: .entries)
+        if !declined.isEmpty { try container.encode(declined, forKey: .declined) }
     }
 
     /// Decodes and validates a manifest.
@@ -84,7 +109,19 @@ public struct SyncManifest: Codable, Sendable, Equatable {
 
     /// A copy of this manifest with `added` entries after the existing ones.
     public func appending(_ added: [SyncEntry]) -> SyncManifest {
-        SyncManifest(sourceRoot: sourceRoot, contentDirectory: contentDirectory, entries: entries + added)
+        SyncManifest(sourceRoot: sourceRoot, contentDirectory: contentDirectory, entries: entries + added, declined: declined)
+    }
+
+    /// A copy with `slugs` removed from the entries and remembered as declined.
+    ///
+    /// A slug already declined, or not in the manifest, is recorded once and changes nothing else.
+    public func declining(_ slugs: [String]) -> SyncManifest {
+        let drop = Set(slugs)
+        var remembered = declined
+        for slug in slugs where !remembered.contains(slug) { remembered.append(slug) }
+        return SyncManifest(
+            sourceRoot: sourceRoot, contentDirectory: contentDirectory,
+            entries: entries.filter { !drop.contains($0.slug) }, declined: remembered)
     }
 
     /// The manifest as pretty-printed JSON, ready to write back to disk.
@@ -109,7 +146,7 @@ public struct SyncManifest: Codable, Sendable, Equatable {
     }
 
     /// Whether `slug` is a plain file stem that cannot name anything outside a directory.
-    static func isSafeSlug(_ slug: String) -> Bool {
+    public static func isSafeSlug(_ slug: String) -> Bool {
         guard !slug.isEmpty, !slug.hasPrefix(".") else { return false }
         return !slug.contains("/") && !slug.contains("\\")
     }

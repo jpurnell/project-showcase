@@ -45,6 +45,11 @@ public struct SyncState: Codable, Sendable, Equatable {
         return try decoder.decode(SyncState.self, from: Data(contentsOf: url))
     }
 
+    /// A copy without the records for `slugs`.
+    public func removing(_ slugs: [String]) -> SyncState {
+        SyncState(records: records.filter { !slugs.contains($0.key) })
+    }
+
     /// Writes the state to `url`.
     public func save(to url: URL) throws {
         let encoder = JSONEncoder()

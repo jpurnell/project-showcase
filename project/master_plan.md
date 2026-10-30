@@ -85,7 +85,7 @@ ProjectShowcase/
 │       ├── PortfolioCommand.swift
 │       └── InfographicsCommand.swift
 ├── Tests/
-│   └── ProjectShowcaseTests/     # 191 tests across 37 suites
+│   └── ProjectShowcaseTests/     # 201 tests across 39 suites
 └── Package.swift
 ```
 
@@ -133,6 +133,7 @@ ProjectShowcase/
 - [x] Bounded subprocess kernel (`ProcessRunner`) — every spawn in the package goes through it
 - [x] `showcase sync`: manifest-driven regeneration of only the pages whose source repo moved (2026-10-30). Shipped ahead of the Roadmap's "GitHub Actions integration" idea, as a local launchd job instead, because the source repos are private and hosted macOS is billed 10x
 - [x] `showcase discover`: proposes new pages from public, owned, active, plan-bearing repos, five per run (2026-10-30). The manifest was previously only the 28 pages the May batch happened to produce
+- [x] Approve step: new pages from `discover` wait for a person (dialog, local preview, approve / decline); declined slugs are remembered
 - [x] Grounding guard: `sync` will not replace a published page with a narrative the card cannot ground
 - [ ] GenericExtractor (fallback file counting, language detection for non-manifest projects)
 - [ ] MCP server wrapper
@@ -171,7 +172,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ### Code Quality
 - All code follows `coding_rules.md`
-- 191 tests across 37 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
+- 201 tests across 39 suites covering all extractors, models, narration, rendering, subprocess spawning, and integration
 - Documentation for all public APIs
 - No warnings in build output
 - Strict concurrency enabled (StrictConcurrency upcoming feature flag)
@@ -239,7 +240,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ---
 
-**Last Updated:** 2026-10-30 — reconciled test counts (128 → 191), recorded `showcase sync`, its
+**Last Updated:** 2026-10-30 — reconciled test counts (128 → 201), recorded `showcase sync`, its
 grounding guard and the weekly launchd job in Current Status, and recorded the master-plan path
 bug in Known Issues with the reason it went unseen. The August 25 reconciliation (119 → 128,
 `ProcessRunner`) stands.
