@@ -31,6 +31,12 @@ struct SyncCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Print the plan and exit without calling the API or writing anything.")
     var dryRun: Bool = false
 
+    @Flag(name: .long, help: "Only rewrite each page's infographics from its repository's current facts: no narrative, no API key, no markdown.")
+    var infographicsOnly: Bool = false
+
+    @Option(name: .long, help: "Write infographics here instead of the manifest's imagesDirectory.")
+    var imagesDir: String?
+
     @Flag(name: .long, help: "Do not regenerate portfolio-overview.md after pages change.")
     var noPortfolio: Bool = false
 
@@ -49,6 +55,14 @@ struct SyncCommand: AsyncParsableCommand {
         let selected = only.isEmpty ? loaded.entries : loaded.entries.filter { only.contains($0.slug) }
         if let unknown = only.first(where: { slug in !loaded.entries.contains { $0.slug == slug } }) {
             throw ShowcaseError.invalidConfiguration(message: "No manifest entry has slug '\(unknown)'.")
+        }
+
+        let imagesURL = imagesDir.map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }
+            ?? loaded.imagesURL(manifestDirectory: manifestDirectory)
+
+        if infographicsOnly {
+            try await writeInfographicsOnly(selected, loaded: loaded, manifestDirectory: manifestDirectory, imagesURL: imagesURL)
+            return
         }
 
         var heads: [String: HeadLookup] = [:]
@@ -96,6 +110,7 @@ struct SyncCommand: AsyncParsableCommand {
                     narrative: narrative, outputDirectory: contentURL,
                     slug: entry.slug, projectLabel: entry.group, tags: entry.tags,
                     publishedDate: existing.flatMap { FrontmatterReader.value(for: "date", in: $0) })
+                if let imagesURL { try InfographicWriter.write(card: card, slug: entry.slug, to: imagesURL) }
                 syncState.records[entry.slug] = SyncRecord(head: head, generatedAt: Date())
                 try syncState.save(to: stateURL)
                 report("[\(entry.slug)] done: \(written.lastPathComponent)")
@@ -116,6 +131,32 @@ struct SyncCommand: AsyncParsableCommand {
 
         if !failures.isEmpty {
             throw ShowcaseError.extractionFailed(source: "sync", message: "\(failures.count) page(s) failed: \(failures.joined(separator: ", "))")
+        }
+    }
+
+    /// Rewrites every selected page's infographics without touching its narrative.
+    private func writeInfographicsOnly(
+        _ entries: [SyncEntry], loaded: SyncManifest, manifestDirectory: URL, imagesURL: URL?
+    ) async throws {
+        guard let imagesURL else {
+            throw ShowcaseError.invalidConfiguration(message: "The manifest has no imagesDirectory; pass --images-dir.")
+        }
+        var failed: [String] = []
+        for entry in entries {
+            do {
+                var card = try await FactGatherer().gather(
+                    from: loaded.sourceURL(for: entry, manifestDirectory: manifestDirectory), insightsPath: nil)
+                if let name = entry.name { card = card.renamed(to: name) }
+                try InfographicWriter.write(card: card, slug: entry.slug, to: imagesURL)
+                report("[\(entry.slug)] infographics written")
+            } catch {
+                logger.error("Infographics for \(entry.slug, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+                failed.append(entry.slug)
+                report("[\(entry.slug)] FAILED: \(error)")
+            }
+        }
+        if !failed.isEmpty {
+            throw ShowcaseError.extractionFailed(source: "infographics", message: "\(failed.count) failed: \(failed.joined(separator: ", "))")
         }
     }
 

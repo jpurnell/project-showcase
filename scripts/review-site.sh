@@ -79,7 +79,7 @@ if [ "${#DECLINED[@]}" -gt 0 ]; then
   [ -x "$SHOWCASE" ] || ( cd "$HERE" && swift build -c release 2>&1 | tail -1 )
   "$SHOWCASE" decline --manifest "$MANIFEST" "${DECLINED[@]}"
   swift run IgniteStarter 2>&1 | tail -1
-  git add -A Content/showcase .showcase-state.json showcase-manifest.json docs
+  git add -A Content/showcase Assets/images/showcase .showcase-state.json showcase-manifest.json docs
   git commit -q -m "chore(showcase): decline ${DECLINED[*]}" \
     -m "Declined in review; discovery will not propose them again."
   git push -q origin "$BRANCH"

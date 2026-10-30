@@ -325,3 +325,81 @@ struct DiscoveryRelativePathTests {
         #expect(Discovery.relativePath(of: "/Users/me/Dev/SwiftExtra/x", from: base) == "/Users/me/Dev/SwiftExtra/x")
     }
 }
+
+@Suite("Infographic Writer Tests")
+struct InfographicWriterTests {
+
+    static func card(name: String) -> ProjectCard {
+        ProjectCard(
+            projectName: name, projectPath: "/p", gatheredAt: Date(timeIntervalSince1970: 1_700_000_000),
+            git: GitFacts(commitCount: 12, releaseHistory: [], branchCount: 1,
+                          firstCommitDate: Date(timeIntervalSince1970: 1_690_000_000),
+                          latestCommitDate: Date(timeIntervalSince1970: 1_699_000_000), contributorCount: 1),
+            packageManifest: nil, tests: nil, quality: nil, insights: nil, designArtifacts: nil)
+    }
+
+    @Test("Writes the three files the site layout requests, named by slug rather than project name")
+    func writesByThreeNames() throws {
+        let dir = try makeFixtureDirectory(prefix: "showcase-svg")
+        let written = try InfographicWriter.write(card: Self.card(name: "SwiftOAuthCore"), slug: "swift-oauth", to: dir)
+        #expect(written.map(\.lastPathComponent).sorted() ==
+                ["swift-oauth-commits.svg", "swift-oauth-releases.svg", "swift-oauth-stats.svg"])
+        for url in written {
+            #expect(try String(contentsOf: url, encoding: .utf8).hasPrefix("<svg"))
+        }
+    }
+
+    @Test("Creates the directory if it does not exist")
+    func createsDirectory() throws {
+        let dir = try makeFixtureDirectory(prefix: "showcase-svg").appendingPathComponent("nested/images")
+        _ = try InfographicWriter.write(card: Self.card(name: "X"), slug: "x", to: dir)
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("x-stats.svg").path))
+    }
+
+    @Test("A slug that could leave the directory is refused and nothing is written")
+    func refusesHostileSlug() throws {
+        let dir = try makeFixtureDirectory(prefix: "showcase-svg")
+        #expect(throws: ShowcaseError.self) {
+            try InfographicWriter.write(card: Self.card(name: "X"), slug: "../escape", to: dir)
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path).isEmpty)
+    }
+
+    @Test("Removing a page's infographics deletes those three files and leaves others alone")
+    func removes() throws {
+        let dir = try makeFixtureDirectory(prefix: "showcase-svg")
+        _ = try InfographicWriter.write(card: Self.card(name: "A"), slug: "a", to: dir)
+        _ = try InfographicWriter.write(card: Self.card(name: "B"), slug: "b", to: dir)
+        try InfographicWriter.remove(slug: "a", from: dir)
+        let left = try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted()
+        #expect(left == ["b-commits.svg", "b-releases.svg", "b-stats.svg"])
+    }
+
+    @Test("Removing a page that has no infographics is not an error")
+    func removeMissing() throws {
+        let dir = try makeFixtureDirectory(prefix: "showcase-svg")
+        try InfographicWriter.remove(slug: "ghost", from: dir)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path).isEmpty)
+    }
+}
+
+@Suite("Manifest Images Directory Tests")
+struct ManifestImagesTests {
+
+    @Test("imagesDirectory is optional, survives a round trip, and survives append and decline")
+    func roundTrip() throws {
+        let json = #"{"sourceRoot":"..","contentDirectory":"c","imagesDirectory":"Assets/images/showcase","entries":[]}"#
+        let manifest = try SyncManifest.decode(from: Data(json.utf8))
+        #expect(manifest.imagesDirectory == "Assets/images/showcase")
+        #expect(manifest.appending([]).imagesDirectory == "Assets/images/showcase")
+        #expect(manifest.declining(["x"]).imagesDirectory == "Assets/images/showcase")
+        #expect(try SyncManifest.decode(from: try manifest.encoded()) == manifest)
+    }
+
+    @Test("A manifest without it has none, and encodes without the key")
+    func absent() throws {
+        let manifest = try SyncManifest.decode(from: Data(#"{"sourceRoot":"..","contentDirectory":"c","entries":[]}"#.utf8))
+        #expect(manifest.imagesDirectory == nil)
+        #expect(!String(decoding: try manifest.encoded(), as: UTF8.self).contains("imagesDirectory"))
+    }
+}

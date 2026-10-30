@@ -57,17 +57,27 @@ public struct SyncManifest: Codable, Sendable, Equatable {
     public let entries: [SyncEntry]
     /// Slugs a person declined, which discovery never proposes again.
     public let declined: [String]
+    /// Directory the infographics are written to, relative to the manifest's directory. When
+    /// absent, `sync` writes none.
+    public let imagesDirectory: String?
 
     private enum CodingKeys: String, CodingKey {
-        case sourceRoot, contentDirectory, entries, declined
+        case sourceRoot, contentDirectory, entries, declined, imagesDirectory
     }
 
     /// Creates a manifest.
-    public init(sourceRoot: String, contentDirectory: String, entries: [SyncEntry], declined: [String] = []) {
+    public init(
+        sourceRoot: String,
+        contentDirectory: String,
+        entries: [SyncEntry],
+        declined: [String] = [],
+        imagesDirectory: String? = nil
+    ) {
         self.sourceRoot = sourceRoot
         self.contentDirectory = contentDirectory
         self.entries = entries
         self.declined = declined
+        self.imagesDirectory = imagesDirectory
     }
 
     /// Decodes a manifest; one written before `declined` existed has none declined.
@@ -77,6 +87,7 @@ public struct SyncManifest: Codable, Sendable, Equatable {
         contentDirectory = try container.decode(String.self, forKey: .contentDirectory)
         entries = try container.decode([SyncEntry].self, forKey: .entries)
         declined = try container.decodeIfPresent([String].self, forKey: .declined) ?? []
+        imagesDirectory = try container.decodeIfPresent(String.self, forKey: .imagesDirectory)
     }
 
     /// Encodes the manifest, leaving `declined` out while nothing has been declined.
@@ -86,6 +97,7 @@ public struct SyncManifest: Codable, Sendable, Equatable {
         try container.encode(contentDirectory, forKey: .contentDirectory)
         try container.encode(entries, forKey: .entries)
         if !declined.isEmpty { try container.encode(declined, forKey: .declined) }
+        try container.encodeIfPresent(imagesDirectory, forKey: .imagesDirectory)
     }
 
     /// Decodes and validates a manifest.
@@ -109,7 +121,7 @@ public struct SyncManifest: Codable, Sendable, Equatable {
 
     /// A copy of this manifest with `added` entries after the existing ones.
     public func appending(_ added: [SyncEntry]) -> SyncManifest {
-        SyncManifest(sourceRoot: sourceRoot, contentDirectory: contentDirectory, entries: entries + added, declined: declined)
+        SyncManifest(sourceRoot: sourceRoot, contentDirectory: contentDirectory, entries: entries + added, declined: declined, imagesDirectory: imagesDirectory)
     }
 
     /// A copy with `slugs` removed from the entries and remembered as declined.
@@ -121,7 +133,8 @@ public struct SyncManifest: Codable, Sendable, Equatable {
         for slug in slugs where !remembered.contains(slug) { remembered.append(slug) }
         return SyncManifest(
             sourceRoot: sourceRoot, contentDirectory: contentDirectory,
-            entries: entries.filter { !drop.contains($0.slug) }, declined: remembered)
+            entries: entries.filter { !drop.contains($0.slug) }, declined: remembered,
+            imagesDirectory: imagesDirectory)
     }
 
     /// The manifest as pretty-printed JSON, ready to write back to disk.
@@ -138,6 +151,11 @@ public struct SyncManifest: Codable, Sendable, Equatable {
         }
         let root = URL(fileURLWithPath: sourceRoot, isDirectory: true, relativeTo: manifestDirectory)
         return URL(fileURLWithPath: entry.path, isDirectory: true, relativeTo: root).standardizedFileURL
+    }
+
+    /// Resolves the infographics directory, or `nil` when the manifest names none.
+    public func imagesURL(manifestDirectory: URL) -> URL? {
+        imagesDirectory.map { URL(fileURLWithPath: $0, isDirectory: true, relativeTo: manifestDirectory).standardizedFileURL }
     }
 
     /// Resolves the content directory.

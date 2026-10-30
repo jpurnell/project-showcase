@@ -37,6 +37,9 @@ struct DeclineCommand: AsyncParsableCommand {
             let page = content.appendingPathComponent("\(slug).md")
             if FileManager.default.fileExists(atPath: page.path) { try FileManager.default.removeItem(at: page) }
         }
+        if let images = loaded.imagesURL(manifestDirectory: manifestDirectory) {
+            for slug in slugs { try InfographicWriter.remove(slug: slug, from: images) }
+        }
         FileHandle.standardError.write(Data("declined: \(slugs.joined(separator: ", "))\n".utf8))
     }
 }
