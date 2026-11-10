@@ -31,7 +31,7 @@ public struct GitExtractor: Sendable {
         echo "===BRANCHES==="
         git branch --list 2>/dev/null
         echo "===CONTRIBUTORS==="
-        git shortlog -sn --all 2>/dev/null
+        git log --all --format=%aE 2>/dev/null | tr '[:upper:]' '[:lower:]' | sort -u
         echo "===FIRST_DATE==="
         git log --reverse --format=%aI 2>/dev/null | head -1
         echo "===LATEST_DATE==="
@@ -64,7 +64,8 @@ public struct GitExtractor: Sendable {
             }
         }
 
-        let releases = tags.map { tag in
+        // A tag that is not a version (a safety tag, a backup, a work-in-progress marker) is not a release.
+        let releases = tags.filter(Self.isVersionTag).map { tag in
             Release(tag: tag, date: tagDates[tag])
         }
 
@@ -98,6 +99,12 @@ public struct GitExtractor: Sendable {
             contributorCount: contributors,
             commitDates: commitDates
         )
+    }
+
+    /// Whether a tag names a version: an optional `v`, then dot-separated numbers, then an optional
+    /// pre-release suffix, such as `v1.0.0`, `0.2` or `3.1.4-beta.1`.
+    static func isVersionTag(_ tag: String) -> Bool {
+        tag.range(of: #"^v?[0-9]+(\.[0-9]+)*([-+][0-9A-Za-z.\-]+)?$"#, options: .regularExpression) != nil
     }
 
     private func parseSections(_ output: String) -> [String: String] {
