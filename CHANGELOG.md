@@ -30,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - **Infographics use the design system.** The three SVG generators took their colours from a
   hard-coded navy and cyan palette. They now read every colour from
-  [DesignTokens](https://github.com/jpurnell/DesignTokens) 0.6.0 (new dependency) through
+  [DesignTokens](https://github.com/jpurnell/DesignTokens) (new dependency, now 0.10.0) through
   `InfographicTheme`, and draw in its Swiss form: flat surface, hairline frame, a heavy top rule,
   square corners, tracked caps labels, the system font stack. An SVG loaded through `<img>` cannot
   read the page's CSS variables, so each file carries a `<style>` with light, OS dark, increased
