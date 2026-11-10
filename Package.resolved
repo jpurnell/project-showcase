@@ -1,13 +1,13 @@
 {
-  "originHash" : "306e960c20dece67591e1eba81d305704c1473ae5a0cf4b2e707fdadf9b8b7d5",
+  "originHash" : "193486db95dbc2e86d677673d22beb8b2c585385f7941087b4b6b2b56b575075",
   "pins" : [
     {
       "identity" : "designtokens",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jpurnell/DesignTokens.git",
       "state" : {
-        "revision" : "7dc690a4a2b5afd5f38c19e3ac8a5bf26a6cb4bb",
-        "version" : "0.9.0"
+        "revision" : "27b2f96f781784a78ee69198a115f7245ace971d",
+        "version" : "0.11.0"
       }
     },
     {
