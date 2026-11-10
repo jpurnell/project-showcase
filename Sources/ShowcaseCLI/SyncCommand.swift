@@ -43,6 +43,9 @@ struct SyncCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Audience for the portfolio overview.")
     var portfolioAudience: String = "selfReflection"
 
+    @Option(name: .long, help: "The site's cv.json, whose basics.pronouns the narrator is told to use. Defaults to Resources/cv.json beside the manifest.")
+    var cv: String?
+
     func run() async throws {
         let manifestURL = URL(fileURLWithPath: manifest).standardizedFileURL
         let manifestDirectory = manifestURL.deletingLastPathComponent()
@@ -76,6 +79,13 @@ struct SyncCommand: AsyncParsableCommand {
             }
         }
 
+        // Read before the dry-run return, so a plan shows what the narrator would be told.
+        let cvURL = cv.map { URL(fileURLWithPath: $0).standardizedFileURL }
+            ?? OwnerPronouns.defaultCVURL(besideManifest: manifestURL)
+        let ownerPronouns = try OwnerPronouns.load(fromCV: cvURL)
+        report(ownerPronouns.map { "[pronouns] \($0.subject)/\($0.object)/\($0.possessive), from \(cvURL.path)" }
+            ?? "[pronouns] none recorded in \(cvURL.path); the narrator is told not to guess")
+
         let plan = SyncPlanner.plan(entries: selected, heads: heads, state: syncState, force: force)
         for decision in plan { report(Self.describe(decision)) }
 
@@ -85,7 +95,7 @@ struct SyncCommand: AsyncParsableCommand {
         if dryRun || work.isEmpty { return }
 
         let key = try resolveAPIKey()
-        let generator = NarrativeGenerator(apiKey: key)
+        let generator = NarrativeGenerator(apiKey: key, ownerPronouns: ownerPronouns)
         let gatherer = FactGatherer()
         let renderer = MarkdownRenderer()
         try FileManager.default.createDirectory(at: contentURL, withIntermediateDirectories: true)
@@ -104,15 +114,33 @@ struct SyncCommand: AsyncParsableCommand {
                     report("[\(entry.slug)] SKIPPED, no master plan description to ground it; the published page is untouched")
                     continue
                 }
-                let narrative = try await generator.generate(card: card, audience: entry.audience, style: entry.style)
                 let existing = Self.readText(at: contentURL.appendingPathComponent("\(entry.slug).md"))
+                let latest = ReleaseGate.latestVersion(in: card.git.releaseHistory.map(\.tag))
+                let previous = syncState.records[entry.slug]
+                if case .regenerate(.sourceMoved) = decision.action, !force,
+                   !ReleaseGate.warrantsRegeneration(recorded: previous?.version, latest: latest) {
+                    if let imagesURL { try InfographicWriter.write(card: card, slug: entry.slug, to: imagesURL) }
+                    syncState.records[entry.slug] = SyncRecord(
+                        head: head, generatedAt: previous?.generatedAt ?? Date(), version: previous?.version)
+                    try syncState.save(to: stateURL)
+                    report("[\(entry.slug)] no new minor release since \(previous?.version ?? "none"); prose left as written, infographics refreshed")
+                    continue
+                }
+                if Settlement.isSettled(existingPage: existing) {
+                    if let imagesURL { try InfographicWriter.write(card: card, slug: entry.slug, to: imagesURL) }
+                    syncState.records[entry.slug] = SyncRecord(head: head, generatedAt: Date(), version: latest ?? "")
+                    try syncState.save(to: stateURL)
+                    report("[\(entry.slug)] SETTLED, prose left as written; infographics refreshed")
+                    continue
+                }
+                let narrative = try await generator.generate(card: card, audience: entry.audience, style: entry.style)
                 let written = try renderer.renderToFile(
                     narrative: narrative, outputDirectory: contentURL,
                     slug: entry.slug, projectLabel: entry.group, tags: entry.tags,
                     publishedDate: existing.flatMap { FrontmatterReader.value(for: "date", in: $0) },
                     published: Publication.isPublished(existingPage: existing))
                 if let imagesURL { try InfographicWriter.write(card: card, slug: entry.slug, to: imagesURL) }
-                syncState.records[entry.slug] = SyncRecord(head: head, generatedAt: Date())
+                syncState.records[entry.slug] = SyncRecord(head: head, generatedAt: Date(), version: latest ?? "")
                 try syncState.save(to: stateURL)
                 report("[\(entry.slug)] done: \(written.lastPathComponent)")
             } catch {

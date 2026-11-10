@@ -15,7 +15,11 @@ public struct PromptBuilder: Sendable {
     public init() {}
 
     /// Build the system prompt for narrative generation.
-    public func buildSystemPrompt(audience: Audience, style: NarrativeStyle) throws -> String {
+    public func buildSystemPrompt(
+        audience: Audience,
+        style: NarrativeStyle,
+        ownerPronouns: OwnerPronouns? = nil
+    ) throws -> String {
         let audienceDescription: String
         switch audience {
         case .hiringManager:
@@ -25,13 +29,22 @@ public struct PromptBuilder: Sendable {
         case .client:
             audienceDescription = "a potential client evaluating whether to hire this developer for a project"
         case .selfReflection:
-            audienceDescription = "the developer themselves, reviewing their own growth and trajectory"
+            audienceDescription = "readers of the developer's own site, written by the developer in the first person"
         }
 
         let styleInstruction: String
         switch style {
         case .caseStudy:
-            styleInstruction = """
+            styleInstruction = audience == .selfReflection ? """
+            Write a case study with this structure:
+            1. A plain, specific title (as a markdown H1)
+            2. A one-sentence summary (as a blockquote)
+            3. Motivation — what the project is, why I built it, and what I wanted from it
+            4. Approach — architectural decisions, methodology, tools
+            5. Results — what shipped, with the numbers
+            6. Decisions — the choices that shaped it and the reason for each, including what is unfinished or uncertain
+            Each section should be a markdown H2.
+            """ : """
             Write a case study narrative with this structure:
             1. A compelling title (as a markdown H1)
             2. A one-sentence summary (as a blockquote)
@@ -63,19 +76,37 @@ public struct PromptBuilder: Sendable {
             """
         }
 
+        let guidelines: String
+        if audience == .selfReflection {
+            guidelines = """
+            - Write in the first person, as the developer ("I"): plain and specific
+            - Do not praise the work or its author: no claims about craft, discipline, quality, taste or skill. State what was built, decided and measured, and let the reader judge
+            - Ground claims in the specific data provided — commit counts, test numbers, release history
+            - If design proposals or a design-first workflow exist, say how they shaped the work
+            - If Claude Code insights data exists, mention it only where it explains how the work was done
+            - Credit other people's work where the input shows it, and say what the project builds on
+            - If a "Project Description" section is present, treat it as the authoritative source for what the project does and who it serves — the narrative must be consistent with this description
+            """
+        } else {
+            guidelines = """
+            - Write in third person about the developer and their work
+            - Ground claims in the specific data provided — commit counts, test numbers, release history
+            - Highlight judgment and craft, not just output
+            - If design proposals or a design-first workflow exist, emphasize this as evidence of architectural thinking
+            - If Claude Code insights data exists, weave it naturally — mention session patterns that demonstrate working style
+            - If a "Project Description" section is present, treat it as the authoritative source for what the project does, who it serves, and how it differentiates — the narrative must be consistent with this description
+            """
+        }
+
         return """
         You are writing a developer portfolio narrative for \(audienceDescription).
 
         \(styleInstruction)
 
         Guidelines:
-        - Write in third person about the developer and their work
-        - Ground claims in the specific data provided — commit counts, test numbers, release history
-        - Highlight judgment and craft, not just output
-        - If design proposals or a design-first workflow exist, emphasize this as evidence of architectural thinking
-        - If Claude Code insights data exists, weave it naturally — mention session patterns that demonstrate working style
-        - If a "Project Description" section is present, treat it as the authoritative source for what the project does, who it serves, and how it differentiates — the narrative must be consistent with this description
+        \(guidelines)
         - Never fabricate data not present in the input
+        - \(OwnerPronouns.rule(for: ownerPronouns))
         - Output pure markdown, no code fences around the entire response
         """
     }

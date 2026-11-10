@@ -241,6 +241,8 @@ Options:
   --infographics-only     Rewrite every selected page's three SVGs from the repo's current facts;
                           no narrative, no API key, no markdown
   --images-dir <dir>      Write SVGs here instead of the manifest's imagesDirectory
+  --cv <path>             cv.json whose basics.pronouns the narrator uses (default:
+                          Resources/cv.json beside the manifest)
 ```
 
 A manifest names each page and what it is generated from:
@@ -259,6 +261,7 @@ A manifest names each page and what it is generated from:
 
 Regeneration preserves what a person decided about a page: its `date:`, tags, `project:` group and
 `published:` flag (an explicit `published: false` stays false).
+A page marked `settled: true` is hand-maintained: sync refreshes its graphics but never rewrites its prose.
 
 A manifest's optional `imagesDirectory` is where each regenerated page's `<slug>-stats.svg`, `-commits.svg`
 and `-releases.svg` are written, named by slug because that is what the site's layout requests.

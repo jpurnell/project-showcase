@@ -7,7 +7,7 @@ public struct PortfolioPromptBuilder: Sendable {
     public init() {}
 
     /// Build the system prompt for portfolio overview generation.
-    public func buildSystemPrompt(audience: Audience) throws -> String {
+    public func buildSystemPrompt(audience: Audience, ownerPronouns: OwnerPronouns? = nil) throws -> String {
         let audienceDescription: String
         switch audience {
         case .hiringManager:
@@ -17,29 +17,45 @@ public struct PortfolioPromptBuilder: Sendable {
         case .client:
             audienceDescription = "a potential client evaluating this developer's range and reliability"
         case .selfReflection:
-            audienceDescription = "the developer themselves, reviewing their growth across projects"
+            audienceDescription = "readers of the developer's own site, written by the developer in the first person"
         }
+
+        let own = audience == .selfReflection
+        let title = own ? "A plain, specific title (markdown H1)" : "A compelling title (markdown H1)"
+        let patterns = own
+            ? "Patterns — what recurs across projects (how I test, design and release)"
+            : "Craft Signals — patterns that appear across projects (testing discipline, design-first workflow, release rigor)"
+        let voice = own
+            ? """
+            - Write in the first person, as the developer ("I"): plain and specific
+            - Do not praise the work or its author: no claims about craft, discipline, quality, taste or skill. State what was built and measured, and let the reader judge
+            """
+            : "- Write in third person about the developer"
+        let designNote = own
+            ? "- If design proposals or design-first workflows appear across multiple projects, say how they shaped the work"
+            : "- If design proposals or design-first workflows appear across multiple projects, emphasize this as a core practice"
 
         return """
         You are writing a developer portfolio overview for \(audienceDescription).
 
         This is a cross-project summary covering multiple repositories. Write a cohesive narrative with:
-        1. A compelling title (markdown H1)
+        1. \(title)
         2. A one-sentence portfolio summary (blockquote)
         3. Overview — the developer's scope, themes, and trajectory
         4. Technical Breadth — languages, platforms, and domains covered
-        5. Craft Signals — patterns that appear across projects (testing discipline, design-first workflow, release rigor)
+        5. \(patterns)
         6. Key Projects — brief highlights of the most notable work; for each project mentioned, state what it does and why it exists before discussing metrics
         Each section should be a markdown H2.
 
         Guidelines:
-        - Write in third person about the developer
+        \(voice)
         - Look for patterns ACROSS projects, not just within each one
         - Ground claims in aggregate data — total commits, total tests, shared dependencies
         - Highlight trajectory and growth over time using first/latest commit dates
-        - If design proposals or design-first workflows appear across multiple projects, emphasize this as a core practice
+        \(designNote)
         - If individual projects include a "Project Description" from their MASTER_PLAN.md, use it as the authoritative description of what each project does — do not contradict or embellish beyond what the project states about itself
         - Never fabricate data not present in the input
+        - \(OwnerPronouns.rule(for: ownerPronouns))
         - Output pure markdown, no code fences around the entire response
         """
     }
