@@ -18,40 +18,42 @@ enum InfographicTheme {
     /// Series colours a chart may use, as `--series-1` ... `--series-4`.
     private static let seriesCount = 4
 
-    /// The `<style>` element to place first inside an `<svg>`.
+    /// The `<style>` element to place first inside an `<svg class="ig">`.
+    ///
+    /// Every selector is scoped under `svg.ig` and every class carries an `ig-` prefix, because an
+    /// inlined chart's `<style>` is part of the page: a bare `.card` or `.label` would restyle the
+    /// page's own. Colours prefer the page's token variable (`var(--label, ...)`), which follows both
+    /// the OS and a manual theme toggle; the fallback is this file's own `--ig-*` value, driven by
+    /// the OS through media queries, which is what an `<img>` or a file opened on its own sees.
     static var styleElement: String {
         """
           <style>
-            svg {
+            svg.ig {
         \(lightVariables)
               font-family: \(fontStack);
             }
-            .bg { fill: var(--background); }
-            .card { fill: var(--secondary-background); }
-            .frame { fill: none; stroke: var(--separator); stroke-width: \(Metrics.hairline); }
-            .rule { fill: var(--label); }
-            .hair { stroke: var(--separator); stroke-width: \(Metrics.hairline); }
-            .label { fill: var(--label); }
-            .muted { fill: var(--secondary-label); }
-            .bar { fill: var(--series-1); }
-            .dot { fill: var(--series-1); }
-            .hole { fill: var(--background); }
-            .s1 { fill: var(--series-1); }
-            .s2 { fill: var(--series-2); }
-            .s3 { fill: var(--series-3); }
-            .s4 { fill: var(--series-4); }
+            svg.ig .ig-bg { fill: var(--background, var(--ig-background)); }
+            svg.ig .ig-rule { fill: var(--label, var(--ig-label)); }
+            svg.ig .ig-hair { stroke: var(--separator, var(--ig-separator)); stroke-width: \(Metrics.hairline); }
+            svg.ig .ig-label { fill: var(--label, var(--ig-label)); }
+            svg.ig .ig-muted { fill: var(--secondary-label, var(--ig-secondary-label)); }
+            svg.ig .ig-bar, svg.ig .ig-dot, svg.ig .ig-s1 { fill: var(--series-1, var(--ig-series-1)); }
+            svg.ig .ig-hole { fill: var(--background, var(--ig-background)); }
+            svg.ig .ig-s2 { fill: var(--series-2, var(--ig-series-2)); }
+            svg.ig .ig-s3 { fill: var(--series-3, var(--ig-series-3)); }
+            svg.ig .ig-s4 { fill: var(--series-4, var(--ig-series-4)); }
             @media (prefers-color-scheme: dark) {
-              svg {
+              svg.ig {
         \(darkVariables)
               }
             }
             @media (prefers-contrast: more) {
-              svg {
+              svg.ig {
         \(contrastVariables(.light))
               }
             }
             @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
-              svg {
+              svg.ig {
         \(contrastVariables(.dark))
               }
             }
@@ -83,16 +85,16 @@ enum InfographicTheme {
 
     private static func base(_ appearance: Appearance) -> [(String, RGB)] {
         [
-            ("--label", ColorToken.label.value(in: appearance)),
-            ("--secondary-label", ColorToken.secondaryLabel.value(in: appearance)),
-            ("--background", ColorToken.background.value(in: appearance)),
-            ("--secondary-background", ColorToken.secondaryBackground.value(in: appearance)),
-            ("--separator", ColorToken.separator.value(in: appearance))
+            ("--ig-label", ColorToken.label.value(in: appearance)),
+            ("--ig-secondary-label", ColorToken.secondaryLabel.value(in: appearance)),
+            ("--ig-background", ColorToken.background.value(in: appearance)),
+            ("--ig-secondary-background", ColorToken.secondaryBackground.value(in: appearance)),
+            ("--ig-separator", ColorToken.separator.value(in: appearance))
         ]
     }
 
     private static func series(_ colours: [RGB]) -> [(String, RGB)] {
-        colours.prefix(seriesCount).enumerated().map { ("--series-\($0.offset + 1)", $0.element) }
+        colours.prefix(seriesCount).enumerated().map { ("--ig-series-\($0.offset + 1)", $0.element) }
     }
 
     private static func variables(_ entries: [(String, RGB)], indent: Int) -> String {

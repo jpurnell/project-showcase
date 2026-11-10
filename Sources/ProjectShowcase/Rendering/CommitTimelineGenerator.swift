@@ -7,27 +7,21 @@
 
 import Foundation
 
-/// Generates a horizontal bar chart SVG showing commit activity over time.
+/// Generates commits per month as bars, from a ``ProjectCard``.
 public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
 
-    /// The time zone a commit's month is read in.
-    private let timeZone: TimeZone
+    /// The time zone months are counted in. UTC by default, so the same card draws the same chart
+    /// on any machine.
+    public let timeZone: TimeZone
+    /// The locale month names are written in.
+    public let locale: Locale
 
-    /// The locale the month labels are written in.
-    private let locale: Locale
-
-    /// Creates a generator that counts and labels months in a stated time zone and locale.
-    ///
-    /// Neither is taken from the machine. A commit made at 02:00 UTC on the first of a month
-    /// belongs to the previous month anywhere west of Greenwich, so a generator that asked the
-    /// system would draw a different chart for the same repository depending on where it ran —
-    /// and the chart is a file that gets committed.
-    ///
+    /// Creates a generator.
     /// - Parameters:
-    ///   - timeZone: The zone month boundaries fall in. UTC by default, matching the dates
-    ///     ``MarkdownRenderer`` writes.
-    ///   - locale: The locale of the abbreviated month names. `en_US_POSIX` by default, whose
-    ///     names do not vary with the system's settings.
+    ///   - timeZone: The zone months are counted in; a commit near midnight on the first of a month
+    ///     belongs to different months in different zones.
+    ///   - locale: The locale month labels are formatted in; fixed so the output does not vary with
+    ///     the system's settings.
     public init(
         timeZone: TimeZone = .gmt,
         locale: Locale = Locale(identifier: "en_US_POSIX")
@@ -36,160 +30,77 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
         self.locale = locale
     }
 
-    /// Generates a commit activity timeline SVG from the given project card.
+    /// Generates a commit activity chart from the given project card.
     public func generate(from card: ProjectCard) throws -> String {
-        let width = 600
-        let height = 200
-        let chartLeft = 40
-        let chartRight = width - 40
-        let chartTop = 55
-        let chartBottom = height - 40
-        let chartWidth = chartRight - chartLeft
-        let chartHeight = chartBottom - chartTop
-
-        var svg = """
-        <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
-        \(InfographicTheme.styleElement)
-          <rect class="bg" x="0" y="0" width="\(width)" height="\(height)"/>
-          <rect class="frame" x="0.5" y="0.5" width="\(width - 1)" height="\(height - 1)"/>
-          <rect class="rule" x="0" y="0" width="\(width)" height="3"/>
-          <text class="label" x="\(chartLeft)" y="34" font-size="16" font-weight="700" letter-spacing="-0.3">\(escapeXML(card.projectName)) — Commit Activity</text>
-        """
-
-        guard let firstDate = card.git.firstCommitDate,
-              let latestDate = card.git.latestCommitDate else {
-            // No date info — show placeholder with commit count
-            svg += """
-
-              <rect class="bar" x="\(chartLeft)" y="\(chartTop)" width="\(chartWidth)" height="\(chartHeight)" />
-              <text x="\(width / 2)" y="\(chartTop + chartHeight / 2 + 5)" class="hole" font-size="14" font-weight="700" text-anchor="middle">\(card.git.commitCount) commits</text>
-            </svg>
-            """
-            return svg
-        }
+        let height = 172
+        let chartTop = InfographicChrome.contentTop
+        let chartBottom = 148
+        let total = card.git.commitCount
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         calendar.locale = locale
-        let months = monthsBetween(start: firstDate, end: latestDate, calendar: calendar)
 
-        guard months.count > 0 else {
-            svg += """
-
-              <rect class="bar" x="\(chartLeft)" y="\(chartTop)" width="\(chartWidth)" height="\(chartHeight)" />
-              <text x="\(width / 2)" y="\(chartTop + chartHeight / 2 + 5)" class="hole" font-size="14" font-weight="700" text-anchor="middle">\(card.git.commitCount) commits</text>
-            </svg>
-            """
-            return svg
+        guard let scale = TimelineScale(
+            card: card, calendar: calendar, left: InfographicChrome.left, right: InfographicChrome.right) else {
+            return InfographicChrome.opening(
+                height: height, label: "\(card.projectName) commit activity by month",
+                title: "\(card.projectName) — Commit Activity", note: "~\(total) commits")
+                + "\n</svg>"
         }
 
-        let commitsPerMonth = max(card.git.commitCount / months.count, 1)
-        let maxBarHeight = chartHeight - 20
-        let barSpacing = 2
-        let totalBarSpace = chartWidth - (barSpacing * (months.count - 1))
-        let barWidth = max(totalBarSpace / months.count, 4)
-
-        // Commits per month, counted in the same calendar the months were laid out in. A card
-        // gathered before commit dates were recorded has none, and then no bar is drawn: equal
-        // bars would claim every month was as busy as the next.
+        // Commits per month, counted in the calendar the axis was laid out in. A card gathered
+        // before commit dates were recorded has none, and then no bar is drawn: equal bars would
+        // claim every month was as busy as the next.
         var countByMonth: [Date: Int] = [:]
         for commit in card.git.commitDates ?? [] {
             if let month = calendar.date(from: calendar.dateComponents([.year, .month], from: commit)) {
                 countByMonth[month, default: 0] += 1
             }
         }
-        let peak = months.map { countByMonth[$0] ?? 0 }.max() ?? 0
+        let peak = scale.months.map { countByMonth[$0] ?? 0 }.max() ?? 0
+        let perMonth = max(total / scale.months.count, 1)
+        let peakText = peak > 0 ? " · peak \(peak)" : ""
 
-        // The same calendar, zone and locale the months were counted in: a label formatted in
-        // another zone would name the month before the one its bar stands for.
+        var svg = InfographicChrome.opening(
+            height: height, label: "\(card.projectName) commit activity by month",
+            title: "\(card.projectName) — Commit Activity",
+            note: "~\(perMonth)/month\(peakText) (\(total) total)")
+
+        // Thin the gaps on a long history, where fixed gaps would eat the bars.
+        let gap = scale.months.count > 40 ? 1.0 : 2.0
+        let maxBarHeight = chartBottom - chartTop
+        for (index, month) in scale.months.enumerated() {
+            let count = countByMonth[month] ?? 0
+            guard count > 0, peak > 0 else { continue }
+            let x = InfographicChrome.pixelFloor(scale.left + Double(index) * scale.slot + gap / 2)
+            let width = max(InfographicChrome.pixelFloor(scale.slot - gap), 1)
+            // At least one pixel, so a single commit is still visible.
+            let barHeight = max(maxBarHeight * count / peak, 1)
+            svg += """
+
+              <rect class="ig-bar" x="\(x)" y="\(chartBottom - barHeight)" width="\(width)" height="\(barHeight)"/>
+            """
+        }
+
+        svg += """
+
+          <line class="ig-hair" x1="\(InfographicChrome.pixel(scale.left))" y1="\(chartBottom)" x2="\(InfographicChrome.pixel(scale.right))" y2="\(chartBottom)"/>
+        """
+
         let formatter = DateFormatter()
         formatter.calendar = calendar
         formatter.timeZone = timeZone
         formatter.locale = locale
         formatter.dateFormat = "MMM"
+        for label in scale.axisLabels(monthFormatter: formatter) {
+            svg += """
 
-        for (index, month) in months.enumerated() {
-            let x = chartLeft + index * (barWidth + barSpacing)
-            let count = countByMonth[month] ?? 0
-
-            if count > 0, peak > 0 {
-                // At least one pixel, so a single commit is still visible.
-                let barHeight = max(maxBarHeight * count / peak, 1)
-                let y = chartBottom - barHeight
-                svg += """
-
-                  <rect class="bar" x="\(x)" y="\(y)" width="\(barWidth)" height="\(barHeight)"/>
-                """
-            }
-
-            // Show month label (skip some if too many)
-            let labelInterval = max(months.count / 8, 1)
-            if index % labelInterval == 0 || index == months.count - 1 {
-                let label = formatter.string(from: month)
-                svg += """
-
-                <text class="muted" x="\(x + barWidth / 2)" y="\(chartBottom + 14)" font-size="9" text-anchor="middle">\(label)</text>
-                """
-            }
+              <text class="ig-muted" x="\(InfographicChrome.pixel(label.x))" y="\(chartBottom + 18)" font-size="10" text-anchor="middle">\(label.text)</text>
+            """
         }
 
-        // Baseline under the bars
-        svg += """
-
-          <line class="hair" x1="\(chartLeft)" y1="\(chartBottom)" x2="\(chartRight)" y2="\(chartBottom)"/>
-        """
-
-        // Commit count annotation
-        let peakText = peak > 0 ? " · peak \(peak)" : ""
-        svg += """
-
-          <text class="muted" x="\(chartRight)" y="\(chartTop - 5)" font-size="10" text-anchor="end">~\(commitsPerMonth)/month\(peakText) (\(card.git.commitCount) total)</text>
-        </svg>
-        """
-
+        svg += "\n</svg>"
         return svg
-    }
-
-    private func monthsBetween(start: Date, end: Date, calendar: Calendar) -> [Date] {
-        var months: [Date] = []
-        let startComps = calendar.dateComponents([.year, .month], from: start)
-        let endComps = calendar.dateComponents([.year, .month], from: end)
-
-        guard let startMonth = calendar.date(from: startComps) else {
-            return [start]
-        }
-
-        var current = startMonth
-        while current <= end {
-            months.append(current)
-            guard let next = calendar.date(byAdding: .month, value: 1, to: current) else {
-                break
-            }
-            if next <= current { break }
-            current = next
-
-            let currentComps = calendar.dateComponents([.year, .month], from: current)
-            if let cy = currentComps.year, let cm = currentComps.month,
-               let ey = endComps.year, let em = endComps.month {
-                if cy > ey || (cy == ey && cm > em) {
-                    break
-                }
-            }
-        }
-
-        if months.isEmpty {
-            months.append(start)
-        }
-
-        return months
-    }
-
-    private func escapeXML(_ string: String) -> String {
-        string
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&apos;")
     }
 }

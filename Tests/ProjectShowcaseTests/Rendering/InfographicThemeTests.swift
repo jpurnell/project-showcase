@@ -86,7 +86,7 @@ struct InfographicThemeTests {
     func statSeriesOrder() throws {
         let svg = try StatsCardGenerator().generate(from: Self.card)
         for index in 0..<4 {
-            #expect(svg.contains("--series-\(index + 1): \(Palette.series[index].hex)"))
+            #expect(svg.contains("--ig-series-\(index + 1): \(Palette.series[index].hex)"))
         }
     }
 
@@ -107,6 +107,44 @@ struct InfographicThemeTests {
                 let parser = XMLParser(data: Data(svg.utf8))
                 #expect(parser.parse(), "\(type(of: generator)): \(parser.parserError?.localizedDescription ?? "")")
             }
+        }
+    }
+
+    // MARK: - Inline use
+
+    /// A chart inlined into a page shares its CSS namespace and its theme. Neither may leak.
+    @Test("Rules are scoped to the chart, so inlining cannot restyle the page")
+    func rulesAreScoped() throws {
+        for generator in Self.generators {
+            let svg = try generator.generate(from: Self.card)
+            let style = svg.components(separatedBy: "</style>").first ?? ""
+            #expect(svg.contains("<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"ig\""))
+            // No bare `svg {` or unprefixed class selector like `.card {` that Bootstrap also defines.
+            #expect(!style.contains("\n    svg {"), "\(type(of: generator)) styles every svg on the page")
+            #expect(!style.contains("\n    .card"), "\(type(of: generator)) restyles the page's .card")
+            #expect(!style.contains("\n    .label"), "\(type(of: generator)) restyles the page's .label")
+        }
+    }
+
+    @Test("A page's own token variables win; the embedded values are only the fallback")
+    func pageTokensWin() throws {
+        for generator in Self.generators {
+            let svg = try generator.generate(from: Self.card)
+            #expect(svg.contains("var(--background, var(--ig-background))"))
+            #expect(svg.contains("var(--label, var(--ig-label))"))
+            #expect(svg.contains("var(--series-1, var(--ig-series-1))"))
+            // The embedded values must not be named like the page's, or they would shadow it.
+            #expect(!svg.contains("\n      --background:"))
+            #expect(svg.contains("--ig-background: \(ColorToken.background.light.hex)"))
+        }
+    }
+
+    @Test("The chart is exposed to assistive technology as an image")
+    func accessible() throws {
+        for generator in Self.generators {
+            let svg = try generator.generate(from: Self.card)
+            #expect(svg.contains("role=\"img\""))
+            #expect(svg.contains("aria-label=\"BusinessMath"))
         }
     }
 }

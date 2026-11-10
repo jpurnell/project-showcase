@@ -41,7 +41,7 @@ struct CommitBarsTests {
     /// Heights of every `class="bar"` rect, in drawing order.
     private func barHeights(_ svg: String) -> [Int] {
         svg.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-            .filter { $0.contains("class=\"bar\"") }
+            .filter { $0.contains("class=\"ig-bar\"") }
             .compactMap { line -> Int? in
                 guard let range = line.range(of: "height=\"") else { return nil }
                 return Int(line[range.upperBound...].prefix { $0.isNumber })
@@ -114,5 +114,81 @@ struct CommitBarsTests {
         let svg = try CommitTimelineGenerator().generate(from: InfographicTests.sampleCard)
         #expect(barHeights(svg).isEmpty)
         #expect(svg.contains("~"))
+    }
+
+    // MARK: - Labels on a long history
+
+    /// A month number as two digits, for an ISO 8601 string.
+    static func twoDigits(_ value: Int) -> String { value < 10 ? "0\(value)" : "\(value)" }
+
+    /// One commit a month from March 2021 to May 2024: 39 months, far more than a month-name axis can say.
+    static let longCard: ProjectCard = {
+        let dates = (0..<39).map { offset -> Date in
+            let year = 2021 + (2 + offset) / 12
+            let month = (2 + offset) % 12 + 1
+            return date("\(year)-\(Self.twoDigits(month))-15T12:00:00Z")
+        }
+        return ProjectCard(
+            projectName: "Long", projectPath: "/tmp/long", gatheredAt: date("2024-06-01T00:00:00Z"),
+            git: GitFacts(commitCount: dates.count, releaseHistory: [], branchCount: 1,
+                          firstCommitDate: dates.first, latestCommitDate: dates.last, contributorCount: 1,
+                          commitDates: dates),
+            packageManifest: nil, tests: nil, quality: nil, insights: nil, designArtifacts: nil
+        )
+    }()
+
+    private func labels(_ svg: String) -> [String] {
+        svg.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+            .filter { $0.contains("class=\"ig-muted\"") && $0.contains("y=\"") && $0.contains("font-size=\"10\"") }
+            .compactMap { line -> String? in
+                guard let open = line.range(of: ">"), let close = line.range(of: "</text>") else { return nil }
+                return String(line[open.upperBound..<close.lowerBound])
+            }
+    }
+
+    @Test("Over fourteen months the axis names years, not months")
+    func longHistoryNamesYears() throws {
+        let axis = labels(try CommitTimelineGenerator().generate(from: Self.longCard))
+
+        #expect(axis == ["2022", "2023", "2024"])
+    }
+
+    @Test("Up to fourteen months the axis still names months")
+    func shortHistoryNamesMonths() throws {
+        let axis = labels(try CommitTimelineGenerator().generate(from: Self.card))
+
+        #expect(axis.contains("Feb"))
+        #expect(!axis.contains("2024"))
+    }
+
+    /// Eight years of months, one commit each: the case where fixed minimum bar widths ran off the chart.
+    @Test("Bars never run past the chart's right edge, however long the history")
+    func barsStayInside() throws {
+        let dates = (0..<96).map { offset -> Date in
+            let year = 2018 + offset / 12
+            let month = offset % 12 + 1
+            return Self.date("\(year)-\(Self.twoDigits(month))-10T12:00:00Z")
+        }
+        let card = ProjectCard(
+            projectName: "Decade", projectPath: "/tmp/decade", gatheredAt: Self.date("2026-01-01T00:00:00Z"),
+            git: GitFacts(commitCount: dates.count, releaseHistory: [], branchCount: 1,
+                          firstCommitDate: dates.first, latestCommitDate: dates.last, contributorCount: 1,
+                          commitDates: dates),
+            packageManifest: nil, tests: nil, quality: nil, insights: nil, designArtifacts: nil
+        )
+        let svg = try CommitTimelineGenerator().generate(from: card)
+        let rights = svg.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+            .filter { $0.contains("class=\"ig-bar\"") }
+            .compactMap { line -> Int? in
+                func value(_ key: String) -> Int? {
+                    guard let r = line.range(of: " \(key)=\"") else { return nil }
+                    return Int(line[r.upperBound...].prefix { $0.isNumber })
+                }
+                guard let x = value("x"), let w = value("width") else { return nil }
+                return x + w
+            }
+        try #require(rights.count == 96)
+        let widest = try #require(rights.max())
+        #expect(widest <= 576)   // right edge = width 600 - margin 24
     }
 }

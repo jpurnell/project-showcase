@@ -7,107 +7,129 @@
 
 import Foundation
 
-/// Generates a timeline visualization SVG of a project's releases.
+/// Generates a release timeline from a ``ProjectCard``: one tick per release at its date, on the
+/// same axis as the commit chart, with a label only where one fits.
 public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
 
-    /// Creates a new ReleaseTimelineGenerator instance.
-    public init() {}
+    /// The time zone the axis is laid out in; see ``CommitTimelineGenerator``.
+    public let timeZone: TimeZone
+    /// The locale month names are written in.
+    public let locale: Locale
 
-    /// Generates a release timeline SVG from the given project card.
+    /// Creates a generator. Both default to the values the commit chart uses, so the two share an axis.
+    public init(
+        timeZone: TimeZone = .gmt,
+        locale: Locale = Locale(identifier: "en_US_POSIX")
+    ) {
+        self.timeZone = timeZone
+        self.locale = locale
+    }
+
+    /// Generates a release timeline from the given project card.
     public func generate(from card: ProjectCard) throws -> String {
-        let width = 600
-        let height = 180
-
+        let height = 132
+        let baseline = 94
         let releases = card.git.releaseHistory
-
-        var svg = """
-        <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
-        \(InfographicTheme.styleElement)
-          <rect class="bg" x="0" y="0" width="\(width)" height="\(height)"/>
-          <rect class="frame" x="0.5" y="0.5" width="\(width - 1)" height="\(height - 1)"/>
-          <rect class="rule" x="0" y="0" width="\(width)" height="3"/>
-          <text class="label" x="60" y="34" font-size="16" font-weight="700" letter-spacing="-0.3">\(escapeXML(card.projectName)) — Releases</text>
-        """
+        let title = "\(card.projectName) — Releases"
+        let label = "\(card.projectName) release history"
 
         guard !releases.isEmpty else {
-            svg += """
+            return InfographicChrome.opening(height: height, label: label, title: title, note: "none yet")
+                + """
 
-              <text x="\(width / 2)" y="\(height / 2 + 10)" class="muted" font-size="13" text-anchor="middle">No releases yet</text>
-            </svg>
-            """
-            return svg
+                  <text class="ig-muted" x="\(InfographicChrome.width / 2)" y="\(baseline)" font-size="13" text-anchor="middle">No releases yet</text>
+                </svg>
+                """
         }
 
-        let timelineY = height / 2 + 10
-        let leftMargin = 60
-        let rightMargin = 60
-        let lineWidth = width - leftMargin - rightMargin
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        calendar.locale = locale
 
-        // Draw timeline line
+        let dated = releases.compactMap { release in release.date.map { (tag: release.tag, date: $0) } }
+        let scale = TimelineScale(card: card, calendar: calendar, left: InfographicChrome.left, right: InfographicChrome.right)
+
+        // Where each release sits. With no dates at all they are spread evenly, oldest first.
+        let placed: [(tag: String, x: Double)]
+        if let scale, !dated.isEmpty {
+            placed = dated.map { ($0.tag, scale.x(for: $0.date)) }
+        } else {
+            let span = InfographicChrome.right - InfographicChrome.left
+            placed = releases.reversed().enumerated().map { index, release in
+                (release.tag, InfographicChrome.left + span * (Double(index) + 0.5) / Double(releases.count))
+            }
+        }
+
+        let newest = dated.max { $0.date < $1.date }?.tag ?? releases[0].tag
+        let noun = releases.count == 1 ? "release" : "releases"
+        var svg = InfographicChrome.opening(
+            height: height, label: label, title: title, note: "\(releases.count) \(noun) · latest \(newest)")
+
         svg += """
 
-          <line class="hair" x1="\(leftMargin)" y1="\(timelineY)" x2="\(leftMargin + lineWidth)" y2="\(timelineY)"/>
+          <line class="ig-hair" x1="\(InfographicChrome.pixel(InfographicChrome.left))" y1="\(baseline)" x2="\(InfographicChrome.pixel(InfographicChrome.right))" y2="\(baseline)"/>
         """
+        for release in placed {
+            svg += """
 
-        let spacing: Int
-        if releases.count == 1 {
-            spacing = 0
-        } else {
-            spacing = lineWidth / (releases.count - 1)
+              <rect class="ig-bar" x="\(InfographicChrome.pixel(release.x) - 1)" y="\(baseline - 16)" width="2" height="16"/>
+            """
         }
 
-        for (index, release) in releases.enumerated() {
-            let x: Int
-            if releases.count == 1 {
-                x = leftMargin + lineWidth / 2
-            } else {
-                x = leftMargin + spacing * index
-            }
-
-            // Dot
+        for named in labelled(placed, newest: newest) {
             svg += """
 
-              <circle class="dot" cx="\(x)" cy="\(timelineY)" r="6"/>
-              <circle class="hole" cx="\(x)" cy="\(timelineY)" r="3"/>
+              <text class="ig-label" x="\(InfographicChrome.pixel(named.x))" y="\(baseline - 24)" font-size="11" font-weight="700" text-anchor="middle">\(InfographicChrome.escape(named.tag))</text>
             """
+        }
 
-            // Tag label — alternate above and below for readability
-            let isAbove = index % 2 == 0
-            let tagY = isAbove ? timelineY - 18 : timelineY + 28
-
-            svg += """
-
-              <text x="\(x)" y="\(tagY)" class="label" font-size="12" font-weight="700" text-anchor="middle">\(escapeXML(release.tag))</text>
-            """
-
-            // Date label (if available)
-            if let date = release.date {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd"
-                let dateStr = formatter.string(from: date)
-                let dateY = isAbove ? tagY - 14 : tagY + 14
-
+        if let scale {
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = timeZone
+            formatter.locale = locale
+            formatter.dateFormat = "MMM"
+            for axis in scale.axisLabels(monthFormatter: formatter) {
                 svg += """
 
-                <text x="\(x)" y="\(dateY)" class="muted" font-size="9" text-anchor="middle">\(dateStr)</text>
+                  <text class="ig-muted" x="\(InfographicChrome.pixel(axis.x))" y="\(baseline + 18)" font-size="10" text-anchor="middle">\(axis.text)</text>
                 """
             }
         }
 
-        svg += """
-
-        </svg>
-        """
-
+        svg += "\n</svg>"
         return svg
     }
 
-    private func escapeXML(_ string: String) -> String {
-        string
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&apos;")
+    /// The releases that get a label, and where.
+    ///
+    /// The newest and the oldest first, then major versions, newest first; each only if it fits
+    /// beside the ones already chosen. Labelling all of twenty-six releases would print them over
+    /// one another, and the ticks already show where each one is.
+    private func labelled(_ placed: [(tag: String, x: Double)], newest: String) -> [(tag: String, x: Double)] {
+        guard let oldest = placed.min(by: { $0.x < $1.x }) else { return [] }
+        let latest = placed.first { $0.tag == newest } ?? placed.max { $0.x < $1.x }
+        let byNewest = placed.sorted { $0.x > $1.x }
+        let candidates = ([latest, oldest].compactMap { $0 }) + byNewest.filter { Self.isMajor($0.tag) }
+
+        var chosen: [(tag: String, x: Double, half: Double)] = []
+        for candidate in candidates where candidate.x.isFinite && !chosen.contains(where: { $0.tag == candidate.tag }) {
+            let half = Double(candidate.tag.count) * 6.5 / 2 + 3
+            // Keep the text inside the chart.
+            let lowest = InfographicChrome.left + half
+            let highest = InfographicChrome.right - half
+            let centre = candidate.x < lowest ? lowest : (candidate.x > highest ? highest : candidate.x)
+            let fits = chosen.allSatisfy { abs($0.x - centre) >= $0.half + half + 8 }
+            if fits { chosen.append((candidate.tag, centre, half)) }
+        }
+        return chosen.map { ($0.tag, $0.x) }
+    }
+
+    /// Whether a tag is a major version: `1.0`, `v2.0.0`, but not `2.1` or `3.0.1`.
+    static func isMajor(_ tag: String) -> Bool {
+        let bare = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        let parts = bare.split(separator: ".")
+        guard let first = parts.first.flatMap({ Int($0) }), first >= 1 else { return false }
+        return parts.dropFirst().allSatisfy { Int($0) == 0 }
     }
 }

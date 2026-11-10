@@ -46,6 +46,8 @@ public enum PortfolioRenderer {
         markdown += "lastModified: \(shortDate.string(from: generatedAt))\n"
         markdown += "tags: showcase, portfolio, overview\n"
         markdown += "layout: ShowcaseLayout\n"
+        // The overview has no project card; without this the layout requests graphics that do not exist.
+        markdown += "infographics: none\n"
         markdown += "projects: \(projectList)\n"
         markdown += "published: true\n"
         markdown += "---\n\n"
