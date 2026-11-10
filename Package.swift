@@ -15,7 +15,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3")
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
+        .package(url: "https://github.com/jpurnell/DesignTokens.git", from: "0.9.0")
     ],
     targets: [
         .target(
@@ -23,6 +24,9 @@ let package = Package(
             // Declared, not excluded. swift-docc-plugin finds a catalogue through the target's
             // `sourceFiles`, which `exclude:` removes it from — so excluding handed DocC no
             // articles, and doc-lint passed over a catalogue it never opened.
+            dependencies: [
+                .product(name: "DesignTokens", package: "DesignTokens")
+            ],
             resources: [.copy("ProjectShowcase.docc")],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
@@ -40,7 +44,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ProjectShowcaseTests",
-            dependencies: ["ProjectShowcase"],
+            dependencies: [
+                "ProjectShowcase",
+                .product(name: "DesignTokens", package: "DesignTokens")
+            ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]

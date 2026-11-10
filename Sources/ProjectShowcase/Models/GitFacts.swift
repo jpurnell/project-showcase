@@ -21,6 +21,8 @@ public struct GitFacts: Codable, Sendable {
     public let latestCommitDate: Date?
     /// Number of unique contributors.
     public let contributorCount: Int
+    /// Author date of every commit, oldest first. `nil` on a card gathered before this was recorded.
+    public let commitDates: [Date]?
 
     /// Creates a new GitFacts instance.
     public init(
@@ -29,7 +31,8 @@ public struct GitFacts: Codable, Sendable {
         branchCount: Int,
         firstCommitDate: Date?,
         latestCommitDate: Date?,
-        contributorCount: Int
+        contributorCount: Int,
+        commitDates: [Date]? = nil
     ) {
         self.commitCount = commitCount
         self.releaseHistory = releaseHistory
@@ -37,6 +40,7 @@ public struct GitFacts: Codable, Sendable {
         self.firstCommitDate = firstCommitDate
         self.latestCommitDate = latestCommitDate
         self.contributorCount = contributorCount
+        self.commitDates = commitDates
     }
 }
 

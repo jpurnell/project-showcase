@@ -28,16 +28,29 @@ public struct NarrativeGenerator: Sendable {
     private let apiKey: String
     private let model: String
     private let baseURL: String
+    private let ownerPronouns: OwnerPronouns?
 
     /// Creates a new NarrativeGenerator with the given API key and optional model/base URL.
     public init(
         apiKey: String,
         model: String = "claude-sonnet-4-6",
-        baseURL: String = "https://api.anthropic.com"
+        baseURL: String = "https://api.anthropic.com",
+        ownerPronouns: OwnerPronouns? = nil
     ) {
         self.apiKey = apiKey
         self.model = model
         self.baseURL = baseURL
+        self.ownerPronouns = ownerPronouns
+    }
+
+    /// The system prompt sent for a project page, including what the narrator was told about pronouns.
+    public func systemPrompt(audience: Audience, style: NarrativeStyle) throws -> String {
+        try PromptBuilder().buildSystemPrompt(audience: audience, style: style, ownerPronouns: ownerPronouns)
+    }
+
+    /// The system prompt sent for the portfolio overview.
+    public func portfolioSystemPrompt(audience: Audience) throws -> String {
+        try PortfolioPromptBuilder().buildSystemPrompt(audience: audience, ownerPronouns: ownerPronouns)
     }
 
     /// Generate a narrative from a ProjectCard.
@@ -48,7 +61,7 @@ public struct NarrativeGenerator: Sendable {
         priorNarrative: NarrativeResult? = nil
     ) async throws -> NarrativeResult {
         let builder = PromptBuilder()
-        let systemPrompt = try builder.buildSystemPrompt(audience: audience, style: style)
+        let systemPrompt = try systemPrompt(audience: audience, style: style)
         let userPrompt = try builder.buildUserPrompt(from: card)
         let cardHash = try builder.cardHash(for: card)
 
@@ -74,7 +87,7 @@ public struct NarrativeGenerator: Sendable {
         audience: Audience
     ) async throws -> String {
         let builder = PortfolioPromptBuilder()
-        let systemPrompt = try builder.buildSystemPrompt(audience: audience)
+        let systemPrompt = try portfolioSystemPrompt(audience: audience)
         let userPrompt = try builder.buildUserPrompt(from: cards)
 
         return try await callAPI(systemPrompt: systemPrompt, userPrompt: userPrompt)

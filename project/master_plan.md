@@ -227,6 +227,7 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 - [ ] Narrative caching keyed by ProjectCard content hash
 - [ ] Go module extraction (go.mod)
 - [ ] Richer infographics (dependency graph, test coverage trend)
+- [x] Infographics drawn from DesignTokens (2026-11-10); commit chart bars sized by real per-month counts (`GitFacts.commitDates`)
 
 ### Phase 3: MCP Server
 - [ ] Wrap Gathering and Narration modules in MCP tool/resource handlers
@@ -241,7 +242,8 @@ This principle is operationalized in the **Adversarial Review** step of `design_
 
 ---
 
-**Last Updated:** 2026-10-30 — reconciled test counts (128 → 213), recorded `showcase sync`, its
+**Last Updated:** 2026-11-10 — infographics moved to DesignTokens and the commit chart now uses real
+per-month counts (tests 213 → 230). Previously, 2026-10-30: reconciled test counts (128 → 213), recorded `showcase sync`, its
 grounding guard and the weekly launchd job in Current Status, and recorded the master-plan path
 bug in Known Issues with the reason it went unseen. The August 25 reconciliation (119 → 128,
 `ProcessRunner`) stands.

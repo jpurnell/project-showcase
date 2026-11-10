@@ -208,8 +208,12 @@ Options:
 Generates three SVG infographic files from a ProjectCard:
 
 - `<project>-stats.svg` — Key metrics card (commits, tests, contributors, etc.)
-- `<project>-commits.svg` — Commit activity timeline
+- `<project>-commits.svg` — Commits per month, bars proportional to the busiest month
 - `<project>-releases.svg` — Release history timeline
+
+Colours, type and light/dark/increased-contrast variants come from the
+[DesignTokens](https://github.com/jpurnell/DesignTokens) package, embedded in each SVG as a
+`<style>` block, so the charts match a site built on the same tokens.
 
 ```
 Arguments:
@@ -237,6 +241,8 @@ Options:
   --infographics-only     Rewrite every selected page's three SVGs from the repo's current facts;
                           no narrative, no API key, no markdown
   --images-dir <dir>      Write SVGs here instead of the manifest's imagesDirectory
+  --cv <path>             cv.json whose basics.pronouns the narrator uses (default:
+                          Resources/cv.json beside the manifest)
 ```
 
 A manifest names each page and what it is generated from:
@@ -255,6 +261,7 @@ A manifest names each page and what it is generated from:
 
 Regeneration preserves what a person decided about a page: its `date:`, tags, `project:` group and
 `published:` flag (an explicit `published: false` stays false).
+A page marked `settled: true` is hand-maintained: sync refreshes its graphics but never rewrites its prose.
 
 A manifest's optional `imagesDirectory` is where each regenerated page's `<slug>-stats.svg`, `-commits.svg`
 and `-releases.svg` are written, named by slug because that is what the site's layout requests.

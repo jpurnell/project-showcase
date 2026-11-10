@@ -32,6 +32,16 @@ struct PortfolioRendererTests {
         #expect(out.hasSuffix("Body.\n"))
     }
 
+    /// The layout builds a page's graphic URLs from its filename. The overview has no project card,
+    /// so without this key it requests `portfolio-overview-{stats,commits,releases}.svg`, which are
+    /// never written. A regeneration once dropped a hand-added key; the renderer now owns it.
+    @Test("The overview opts out of project graphics")
+    func optsOutOfInfographics() {
+        let out = PortfolioRenderer.render(text: "Body.", cards: [Self.card("A", commits: 1)],
+                                           generatedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        #expect(out.contains("layout: ShowcaseLayout\ninfographics: none\n"))
+    }
+
     @Test("Output is independent of the machine's time zone and locale")
     func pinned() {
         let out = PortfolioRenderer.render(text: "x", cards: [], generatedAt: Date(timeIntervalSince1970: 1_700_000_000))

@@ -13,11 +13,15 @@ public struct SyncRecord: Codable, Sendable, Equatable {
     public let head: String
     /// When the page was generated.
     public let generatedAt: Date
+    /// The project's newest release when the page was last written; empty when it had none,
+    /// `nil` on a record made before this was kept.
+    public let version: String?
 
     /// Creates a record.
-    public init(head: String, generatedAt: Date) {
+    public init(head: String, generatedAt: Date, version: String? = nil) {
         self.head = head
         self.generatedAt = generatedAt
+        self.version = version
     }
 }
 
