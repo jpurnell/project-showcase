@@ -17,25 +17,22 @@ public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
     public func generate(from card: ProjectCard) throws -> String {
         let width = 600
         let height = 180
-        let bgColor = "#1a1a2e"
-        let lineColor = "#0f3460"
-        let dotColor = "#00d4ff"
-        let tagColor = "#e0e0e0"
-        let titleColor = "#e0e0e0"
-        let labelColor = "#8892b0"
 
         let releases = card.git.releaseHistory
 
         var svg = """
         <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
-          <rect x="0" y="0" width="\(width)" height="\(height)" rx="10" ry="10" fill="\(bgColor)"/>
-          <text x="\(width / 2)" y="32" font-family="sans-serif" font-size="16" font-weight="bold" fill="\(titleColor)" text-anchor="middle">\(escapeXML(card.projectName)) — Releases</text>
+        \(InfographicTheme.styleElement)
+          <rect class="bg" x="0" y="0" width="\(width)" height="\(height)"/>
+          <rect class="frame" x="0.5" y="0.5" width="\(width - 1)" height="\(height - 1)"/>
+          <rect class="rule" x="0" y="0" width="\(width)" height="3"/>
+          <text class="label" x="60" y="34" font-size="16" font-weight="700" letter-spacing="-0.3">\(escapeXML(card.projectName)) — Releases</text>
         """
 
         guard !releases.isEmpty else {
             svg += """
 
-              <text x="\(width / 2)" y="\(height / 2 + 10)" font-family="sans-serif" font-size="13" fill="\(labelColor)" text-anchor="middle">No releases yet</text>
+              <text x="\(width / 2)" y="\(height / 2 + 10)" class="muted" font-size="13" text-anchor="middle">No releases yet</text>
             </svg>
             """
             return svg
@@ -49,7 +46,7 @@ public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
         // Draw timeline line
         svg += """
 
-          <line x1="\(leftMargin)" y1="\(timelineY)" x2="\(leftMargin + lineWidth)" y2="\(timelineY)" stroke="\(lineColor)" stroke-width="3" stroke-linecap="round"/>
+          <line class="hair" x1="\(leftMargin)" y1="\(timelineY)" x2="\(leftMargin + lineWidth)" y2="\(timelineY)"/>
         """
 
         let spacing: Int
@@ -70,8 +67,8 @@ public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
             // Dot
             svg += """
 
-              <circle cx="\(x)" cy="\(timelineY)" r="6" fill="\(dotColor)"/>
-              <circle cx="\(x)" cy="\(timelineY)" r="3" fill="\(bgColor)"/>
+              <circle class="dot" cx="\(x)" cy="\(timelineY)" r="6"/>
+              <circle class="hole" cx="\(x)" cy="\(timelineY)" r="3"/>
             """
 
             // Tag label — alternate above and below for readability
@@ -80,7 +77,7 @@ public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
 
             svg += """
 
-              <text x="\(x)" y="\(tagY)" font-family="sans-serif" font-size="12" font-weight="bold" fill="\(tagColor)" text-anchor="middle">\(escapeXML(release.tag))</text>
+              <text x="\(x)" y="\(tagY)" class="label" font-size="12" font-weight="700" text-anchor="middle">\(escapeXML(release.tag))</text>
             """
 
             // Date label (if available)
@@ -92,7 +89,7 @@ public struct ReleaseTimelineGenerator: InfographicGenerator, Sendable {
 
                 svg += """
 
-                <text x="\(x)" y="\(dateY)" font-family="sans-serif" font-size="9" fill="\(labelColor)" text-anchor="middle">\(dateStr)</text>
+                <text x="\(x)" y="\(dateY)" class="muted" font-size="9" text-anchor="middle">\(dateStr)</text>
                 """
             }
         }

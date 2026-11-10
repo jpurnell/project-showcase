@@ -1,6 +1,15 @@
 {
-  "originHash" : "934185b2051e7e7171c507923684e0aa1d37ddd86c89cb6cf54f26afa2e12946",
+  "originHash" : "77b68e753f8ff783d5df5577f4733b7c586a3b9120844096cea03a074eedd7b9",
   "pins" : [
+    {
+      "identity" : "designtokens",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpurnell/DesignTokens.git",
+      "state" : {
+        "revision" : "2ee74a62fe1a56356b000d8f56b49696f9851628",
+        "version" : "0.8.0"
+      }
+    },
     {
       "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",

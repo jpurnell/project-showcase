@@ -40,10 +40,6 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
     public func generate(from card: ProjectCard) throws -> String {
         let width = 600
         let height = 200
-        let bgColor = "#1a1a2e"
-        let barColor = "#00d4ff"
-        let labelColor = "#8892b0"
-        let titleColor = "#e0e0e0"
         let chartLeft = 40
         let chartRight = width - 40
         let chartTop = 55
@@ -53,8 +49,11 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
 
         var svg = """
         <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
-          <rect x="0" y="0" width="\(width)" height="\(height)" rx="10" ry="10" fill="\(bgColor)"/>
-          <text x="\(width / 2)" y="32" font-family="sans-serif" font-size="16" font-weight="bold" fill="\(titleColor)" text-anchor="middle">\(escapeXML(card.projectName)) — Commit Activity</text>
+        \(InfographicTheme.styleElement)
+          <rect class="bg" x="0" y="0" width="\(width)" height="\(height)"/>
+          <rect class="frame" x="0.5" y="0.5" width="\(width - 1)" height="\(height - 1)"/>
+          <rect class="rule" x="0" y="0" width="\(width)" height="3"/>
+          <text class="label" x="\(chartLeft)" y="34" font-size="16" font-weight="700" letter-spacing="-0.3">\(escapeXML(card.projectName)) — Commit Activity</text>
         """
 
         guard let firstDate = card.git.firstCommitDate,
@@ -62,8 +61,8 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
             // No date info — show placeholder with commit count
             svg += """
 
-              <rect x="\(chartLeft)" y="\(chartTop)" width="\(chartWidth)" height="\(chartHeight)" rx="4" ry="4" fill="\(barColor)" opacity="0.7"/>
-              <text x="\(width / 2)" y="\(chartTop + chartHeight / 2 + 5)" font-family="sans-serif" font-size="14" fill="\(bgColor)" font-weight="bold" text-anchor="middle">\(card.git.commitCount) commits</text>
+              <rect class="bar" x="\(chartLeft)" y="\(chartTop)" width="\(chartWidth)" height="\(chartHeight)" />
+              <text x="\(width / 2)" y="\(chartTop + chartHeight / 2 + 5)" class="hole" font-size="14" font-weight="700" text-anchor="middle">\(card.git.commitCount) commits</text>
             </svg>
             """
             return svg
@@ -77,8 +76,8 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
         guard months.count > 0 else {
             svg += """
 
-              <rect x="\(chartLeft)" y="\(chartTop)" width="\(chartWidth)" height="\(chartHeight)" rx="4" ry="4" fill="\(barColor)" opacity="0.7"/>
-              <text x="\(width / 2)" y="\(chartTop + chartHeight / 2 + 5)" font-family="sans-serif" font-size="14" fill="\(bgColor)" font-weight="bold" text-anchor="middle">\(card.git.commitCount) commits</text>
+              <rect class="bar" x="\(chartLeft)" y="\(chartTop)" width="\(chartWidth)" height="\(chartHeight)" />
+              <text x="\(width / 2)" y="\(chartTop + chartHeight / 2 + 5)" class="hole" font-size="14" font-weight="700" text-anchor="middle">\(card.git.commitCount) commits</text>
             </svg>
             """
             return svg
@@ -90,6 +89,17 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
         let totalBarSpace = chartWidth - (barSpacing * (months.count - 1))
         let barWidth = max(totalBarSpace / months.count, 4)
 
+        // Commits per month, counted in the same calendar the months were laid out in. A card
+        // gathered before commit dates were recorded has none, and then no bar is drawn: equal
+        // bars would claim every month was as busy as the next.
+        var countByMonth: [Date: Int] = [:]
+        for commit in card.git.commitDates ?? [] {
+            if let month = calendar.date(from: calendar.dateComponents([.year, .month], from: commit)) {
+                countByMonth[month, default: 0] += 1
+            }
+        }
+        let peak = months.map { countByMonth[$0] ?? 0 }.max() ?? 0
+
         // The same calendar, zone and locale the months were counted in: a label formatted in
         // another zone would name the month before the one its bar stands for.
         let formatter = DateFormatter()
@@ -100,13 +110,17 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
 
         for (index, month) in months.enumerated() {
             let x = chartLeft + index * (barWidth + barSpacing)
-            let barHeight = maxBarHeight
-            let y = chartBottom - barHeight
+            let count = countByMonth[month] ?? 0
 
-            svg += """
+            if count > 0, peak > 0 {
+                // At least one pixel, so a single commit is still visible.
+                let barHeight = max(maxBarHeight * count / peak, 1)
+                let y = chartBottom - barHeight
+                svg += """
 
-              <rect x="\(x)" y="\(y)" width="\(barWidth)" height="\(barHeight)" rx="2" ry="2" fill="\(barColor)" opacity="0.8"/>
-            """
+                  <rect class="bar" x="\(x)" y="\(y)" width="\(barWidth)" height="\(barHeight)"/>
+                """
+            }
 
             // Show month label (skip some if too many)
             let labelInterval = max(months.count / 8, 1)
@@ -114,15 +128,22 @@ public struct CommitTimelineGenerator: InfographicGenerator, Sendable {
                 let label = formatter.string(from: month)
                 svg += """
 
-                <text x="\(x + barWidth / 2)" y="\(chartBottom + 14)" font-family="sans-serif" font-size="9" fill="\(labelColor)" text-anchor="middle">\(label)</text>
+                <text class="muted" x="\(x + barWidth / 2)" y="\(chartBottom + 14)" font-size="9" text-anchor="middle">\(label)</text>
                 """
             }
         }
 
-        // Commit count annotation
+        // Baseline under the bars
         svg += """
 
-          <text x="\(chartRight)" y="\(chartTop - 5)" font-family="sans-serif" font-size="10" fill="\(labelColor)" text-anchor="end">~\(commitsPerMonth)/month (\(card.git.commitCount) total)</text>
+          <line class="hair" x1="\(chartLeft)" y1="\(chartBottom)" x2="\(chartRight)" y2="\(chartBottom)"/>
+        """
+
+        // Commit count annotation
+        let peakText = peak > 0 ? " · peak \(peak)" : ""
+        svg += """
+
+          <text class="muted" x="\(chartRight)" y="\(chartTop - 5)" font-size="10" text-anchor="end">~\(commitsPerMonth)/month\(peakText) (\(card.git.commitCount) total)</text>
         </svg>
         """
 

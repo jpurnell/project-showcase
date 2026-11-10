@@ -208,8 +208,12 @@ Options:
 Generates three SVG infographic files from a ProjectCard:
 
 - `<project>-stats.svg` — Key metrics card (commits, tests, contributors, etc.)
-- `<project>-commits.svg` — Commit activity timeline
+- `<project>-commits.svg` — Commits per month, bars proportional to the busiest month
 - `<project>-releases.svg` — Release history timeline
+
+Colours, type and light/dark/increased-contrast variants come from the
+[DesignTokens](https://github.com/jpurnell/DesignTokens) package, embedded in each SVG as a
+`<style>` block, so the charts match a site built on the same tokens.
 
 ```
 Arguments:

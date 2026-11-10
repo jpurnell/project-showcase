@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Infographics use the design system.** The three SVG generators took their colours from a
+  hard-coded navy and cyan palette. They now read every colour from
+  [DesignTokens](https://github.com/jpurnell/DesignTokens) 0.6.0 (new dependency) through
+  `InfographicTheme`, and draw in its Swiss form: flat surface, hairline frame, a heavy top rule,
+  square corners, tracked caps labels, the system font stack. An SVG loaded through `<img>` cannot
+  read the page's CSS variables, so each file carries a `<style>` with light, OS dark, increased
+  contrast, and increased contrast in dark, in the order `tokens.css` uses. Tests pin that no
+  generator emits a literal colour or a pre-design-system hex, and the cascade order.
+
+### Fixed
+- **Commit activity bars were all the same height.** The chart drew every month at full height
+  whatever the month held. `GitFacts` now records `commitDates` (the author date of every commit),
+  `CommitTimelineGenerator` counts them per month in the calendar and time zone it is given, and
+  bar height is proportional to the busiest month, with a one-pixel floor so a single commit shows
+  and no bar for a month with none. The annotation gains the peak (`~89/month · peak 228`). A card
+  gathered before this field existed decodes with `commitDates == nil` and draws no bars rather
+  than invent them. Regenerate a site's SVGs with `showcase sync --infographics-only`.
+
 ### Fixed
 - **Regeneration published pages the owner had withheld.** The renderer wrote `published: true`
   unconditionally, so `sync` flipped two deliberately unpublished pages (`narbis`, `swiftsvg`,

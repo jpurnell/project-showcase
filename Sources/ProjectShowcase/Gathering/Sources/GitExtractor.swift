@@ -36,6 +36,8 @@ public struct GitExtractor: Sendable {
         git log --reverse --format=%aI 2>/dev/null | head -1
         echo "===LATEST_DATE==="
         git log -1 --format=%aI 2>/dev/null
+        echo "===COMMIT_DATES==="
+        git log --reverse --format=%aI 2>/dev/null
         echo "===END==="
         """
 
@@ -83,13 +85,18 @@ public struct GitExtractor: Sendable {
         let latestDateStr = (sections["LATEST_DATE"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let latestDate = formatter.date(from: latestDateStr)
 
+        let commitDates = (sections["COMMIT_DATES"] ?? "")
+            .split(whereSeparator: \.isNewline)
+            .compactMap { formatter.date(from: $0.trimmingCharacters(in: .whitespaces)) }
+
         return GitFacts(
             commitCount: commits,
             releaseHistory: releases,
             branchCount: branches,
             firstCommitDate: firstDate,
             latestCommitDate: latestDate,
-            contributorCount: contributors
+            contributorCount: contributors,
+            commitDates: commitDates
         )
     }
 

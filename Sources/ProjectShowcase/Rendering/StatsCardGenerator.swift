@@ -17,49 +17,44 @@ public struct StatsCardGenerator: InfographicGenerator, Sendable {
     public func generate(from card: ProjectCard) throws -> String {
         let width = 460
         let height = 220
-        let bgColor = "#1a1a2e"
-        let cardColor = "#16213e"
-        let accentColor = "#0f3460"
-        let textColor = "#e0e0e0"
-        let highlightColor = "#00d4ff"
-        let labelColor = "#8892b0"
 
         let commitCount = card.git.commitCount
         let releaseCount = card.git.releaseHistory.count
         let testCount = card.tests?.testCount
         let platformCount = card.packageManifest?.platforms.count
 
-        var statEntries: [(label: String, value: String, color: String)] = [
-            ("Commits", "\(commitCount)", highlightColor)
-        ]
-
+        // Each stat takes the next series colour, so a card's colours follow what it shows.
+        var statEntries: [(label: String, value: String)] = [("Commits", "\(commitCount)")]
         if let tests = testCount {
-            statEntries.append(("Tests", "\(tests)", "#50fa7b"))
+            statEntries.append(("Tests", "\(tests)"))
         }
-
-        statEntries.append(("Releases", "\(releaseCount)", "#ff79c6"))
-
+        statEntries.append(("Releases", "\(releaseCount)"))
         if let platforms = platformCount {
-            statEntries.append(("Platforms", "\(platforms)", "#ffb86c"))
+            statEntries.append(("Platforms", "\(platforms)"))
         }
 
-        let colWidth = (width - 60) / max(statEntries.count, 1)
+        let margin = 24
+        let colWidth = (width - 2 * margin) / max(statEntries.count, 1)
 
         var svg = """
         <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
-          <rect x="0" y="0" width="\(width)" height="\(height)" rx="12" ry="12" fill="\(bgColor)"/>
-          <rect x="10" y="10" width="\(width - 20)" height="\(height - 20)" rx="8" ry="8" fill="\(cardColor)"/>
-          <rect x="10" y="10" width="\(width - 20)" height="50" rx="8" ry="8" fill="\(accentColor)"/>
-          <text x="\(width / 2)" y="42" font-family="sans-serif" font-size="20" font-weight="bold" fill="\(highlightColor)" text-anchor="middle">\(escapeXML(card.projectName))</text>
+        \(InfographicTheme.styleElement)
+          <rect class="bg" x="0" y="0" width="\(width)" height="\(height)"/>
+          <rect class="frame" x="0.5" y="0.5" width="\(width - 1)" height="\(height - 1)"/>
+          <rect class="rule" x="0" y="0" width="\(width)" height="3"/>
+          <text class="label" x="\(margin)" y="44" font-size="20" font-weight="700" letter-spacing="-0.4">\(escapeXML(card.projectName))</text>
+          <line class="hair" x1="\(margin)" y1="62" x2="\(width - margin)" y2="62"/>
         """
 
-        let baseY = 100
+        let baseY = 124
         for (index, entry) in statEntries.enumerated() {
-            let x = 30 + (colWidth * index) + colWidth / 2
+            let x = margin + colWidth * index
+            let seriesClass = "s\(index % 4 + 1)"
             svg += """
 
-              <text x="\(x)" y="\(baseY)" font-family="sans-serif" font-size="28" font-weight="bold" fill="\(entry.color)" text-anchor="middle">\(entry.value)</text>
-              <text x="\(x)" y="\(baseY + 24)" font-family="sans-serif" font-size="12" fill="\(labelColor)" text-anchor="middle">\(entry.label)</text>
+              <rect class="\(seriesClass)" x="\(x)" y="\(baseY - 44)" width="24" height="3"/>
+              <text class="label" x="\(x)" y="\(baseY)" font-size="28" font-weight="700" letter-spacing="-0.6">\(entry.value)</text>
+              <text class="muted" x="\(x)" y="\(baseY + 22)" font-size="11" font-weight="600" letter-spacing="0.9">\(entry.label.uppercased())</text>
             """
         }
 
@@ -67,7 +62,7 @@ public struct StatsCardGenerator: InfographicGenerator, Sendable {
         let contributorText = card.git.contributorCount == 1 ? "1 contributor" : "\(card.git.contributorCount) contributors"
         svg += """
 
-          <text x="\(width / 2)" y="\(height - 25)" font-family="sans-serif" font-size="11" fill="\(textColor)" text-anchor="middle" opacity="0.6">\(contributorText)</text>
+          <text class="muted" x="\(margin)" y="\(height - 22)" font-size="11">\(contributorText)</text>
         </svg>
         """
 
